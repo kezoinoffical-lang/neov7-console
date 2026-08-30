@@ -41,6 +41,7 @@
   .section .body{padding:6px 6px 12px;}
   .gridjs-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border-color:#33475f!important;}
   .gridjs-table{font-size:14px;width:100%;}
+  .gridjs-th{white-space:nowrap;}
   .gridjs-th,.gridjs-td{border:1px solid #33475f!important;}
   .gridjs-footer{background:var(--panel2)!important;border-color:#33475f!important;box-shadow:none!important;}
   .gridjs-pagination{color:var(--label)!important}
@@ -164,21 +165,21 @@ const td={background:"#0f1722",color:"#e6edf3",borderColor:"#33475f",verticalAli
 
 const posGrid = new gridjs.Grid({
   columns:[
-    {name:"系統",width:"96px"},
-    {name:"銘柄",width:"110px"},
-    {name:"売買",width:"70px"},
-    {name:"残数量",width:"84px"},
-    {name:"取得価格",width:"96px"},
-    {name:"現在値",width:"110px"},
-    {name:"価格時刻（ET）",width:"140px"},
-    {name:"含み損益",width:"110px"},
-    {name:"含み損益率",width:"110px"},
+    "系統",
+    "銘柄",
+    {name:"売買",width:"64px"},
+    "残数量",
+    "取得価格",
+    "現在値",
+    "価格時刻（ET）",
+    "含み損益",
+    "含み損益率",
     {name:"損切／利確",width:"360px"},
   ],
   data:[],
   pagination:{limit:8},
   language:{noRecordsFound:"受信待ち…"},
-  style:{table:{width:"100%",tableLayout:"fixed"},th,td},
+  style:{table:{width:"100%"},th,td},
 }).render(document.getElementById("positions"));
 
 function setConn(state){
