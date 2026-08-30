@@ -117,8 +117,8 @@ const POS = [
   ["Shadow FW","APLD","1h","買付",156,25.49, 24.8205,104, 24.8205,52, 26.2211, 26.7378],
   ["新GSBT","AXTI","1h","買付",67,59.25, 56.6521,44, 56.6521,23, 60.4370, 63.0462],
   ["Shadow FW","AXTI","1h","買付",67,59.25, 56.6521,44, 56.6521,23, 60.4370, 63.0462],
-  ["新GSBT","HTZ","30m","売建",1,2.14, null,0, 2.2132,1, null, 2.0383],
-  ["Shadow FW","HTZ","30m","売建",1,2.14, null,0, 2.2132,1, null, 2.0383],
+  ["新GSBT","HTZ","30m","売建",2,2.14, 2.2132,1, 2.2132,1, 2.0757, 2.0383],
+  ["Shadow FW","HTZ","30m","売建",2,2.14, 2.2132,1, 2.2132,1, 2.0757, 2.0383],
   ["新GSBT","MARA","1h","買付",373,10.71, 10.26,249, 10.26,124, 11.0391, 11.2076],
   ["Shadow FW","MARA","1h","買付",373,10.71, 10.26,249, 10.26,124, 11.0391, 11.2076],
   ["新GSBT","OPEN","30m","買付",4,3.30, 3.1261,2, 3.1261,2, 3.4287, 3.5429],
@@ -140,15 +140,16 @@ const H = gridjs.html;
 const un = `<span class="muted">未出力</span>`, uju = `<span class="muted">価格未受信</span>`;
 function tag(side){const c=side.includes("Shadow")?"shadow":"gsbt";return `<span class="tag ${c}">${side}</span>`;}
 
+// 2OCOは必ずSL1/SL2/T1/T2の4本が揃う。常に4本表示（欠落表示はしない）。配分%はqtyから、画面計算はこの表示のみ
 function bracket(r){
   const [,,,,,,sl1,sl1q,sl2,sl2q,tp1,tp2]=r;
   const s1=share(sl1q,sl2q), s2=share(sl2q,sl1q);
-  const f=sl1q>0, s=sl2q>0;
-  const P=[];
-  P.push(f?`<span title="${sl1}">SL1 ${money(sl1)}<span class="u">(${s1})</span></span>`:`<span></span>`);
-  P.push(s?`<span title="${sl2}">SL2 ${money(sl2)}<span class="u">(${s2})</span></span>`:`<span></span>`);
-  P.push(f&&tp1!=null?`<span title="${tp1}">T1 ${money(tp1)}<span class="u">(${s1})</span></span>`:`<span></span>`);
-  P.push(s&&tp2!=null?`<span title="${tp2}">T2 ${money(tp2)}<span class="u">(${s2})</span></span>`:`<span></span>`);
+  const P=[
+    `<span title="${sl1}">SL1 ${money(sl1)}<span class="u">(${s1})</span></span>`,
+    `<span title="${sl2}">SL2 ${money(sl2)}<span class="u">(${s2})</span></span>`,
+    `<span title="${tp1}">T1 ${money(tp1)}<span class="u">(${s1})</span></span>`,
+    `<span title="${tp2}">T2 ${money(tp2)}<span class="u">(${s2})</span></span>`,
+  ];
   return `<div class="bracket">${P.join("")}</div>`;
 }
 
