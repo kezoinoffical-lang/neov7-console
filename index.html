@@ -40,9 +40,9 @@
   .section .head .badge{font-size:11px;color:var(--label);}
   .section .body{padding:6px 6px 12px;}
   .gridjs-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border-color:#33475f!important;}
-  .gridjs-table{font-size:14px;width:100%;}
-  .gridjs-th{white-space:nowrap;}
-  .gridjs-th,.gridjs-td{border:1px solid #33475f!important;}
+  .gridjs-table{font-size:14px;width:100%;table-layout:auto;}
+  .gridjs-th,.gridjs-td{border:1px solid #33475f!important;white-space:nowrap;}
+  .gridjs-td:last-child,.gridjs-th:last-child{white-space:normal;}
   .gridjs-footer{background:var(--panel2)!important;border-color:#33475f!important;box-shadow:none!important;}
   .gridjs-pagination{color:var(--label)!important}
   .gridjs-pagination .gridjs-pages button{background:var(--panel)!important;color:var(--text)!important;border:1px solid #33475f!important;}
@@ -164,18 +164,7 @@ const th={background:"#0b121c",color:"#8b97a7",borderColor:"#33475f",fontSize:"1
 const td={background:"#0f1722",color:"#e6edf3",borderColor:"#33475f",verticalAlign:"top"};
 
 const posGrid = new gridjs.Grid({
-  columns:[
-    "系統",
-    "銘柄",
-    {name:"売買",width:"64px"},
-    "残数量",
-    "取得価格",
-    "現在値",
-    "価格時刻（ET）",
-    "含み損益",
-    "含み損益率",
-    {name:"損切／利確",width:"360px"},
-  ],
+  columns:["系統","銘柄","売買","残数量","取得価格","現在値","価格時刻（ET）","含み損益","含み損益率","損切／利確"],
   data:[],
   pagination:{limit:8},
   language:{noRecordsFound:"受信待ち…"},
