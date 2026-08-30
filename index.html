@@ -147,3 +147,141 @@ function rowOf(p,label){
     H(bracketLive(p)),
   ];
 }
+function posRows(d){
+  // 銘柄ごとに 新GSBT → Shadow FW の交互並び（同じ銘柄を上下ペアにして見比べやすくする）
+  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
+  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const out=[];
+  const n=Math.max(g.length, s.length);
+  for(let i=0;i<n;i++){
+    if(i<g.length) out.push(rowOf(g[i],"新GSBT"));
+    if(i<s.length) out.push(rowOf(s[i],"Shadow FW"));
+  }
+  return out;
+}
+const th={background:"#0b121c",color:"#8b97a7",borderColor:"#33475f",fontSize:"13px"};
+const td={background:"#0f1722",color:"#e6edf3",borderColor:"#33475f",verticalAlign:"top"};
+const posGrid = new gridjs.Grid({
+  columns:[
+    {name:"系統",width:"117px"},
+    {name:"銘柄",width:"120px"},
+    {name:"売買",width:"76px"},
+    {name:"残数量",width:"87px"},
+    {name:"取得価格",width:"101px"},
+    {name:"現在値",width:"118px"},
+    {name:"価格時刻（ET）",width:"143px"},
+    {name:"含み損益",width:"118px"},
+    {name:"含み損益率",width:"118px"},
+    {name:"損切／利確",width:"292px"},
+  ],
+  data:[],
+  pagination:{limit:8},
+  language:{noRecordsFound:"受信待ち…"},
+  style:{table:{width:"100%"},th,td},
+}).render(document.getElementById("positions"));
+// シグナル発火履歴テーブル（新GSBT→Shadow FW 交互並び）
+const sigGrid = new gridjs.Grid({
+  columns:[
+    {name:"系統",width:"117px"},
+    {name:"銘柄",width:"110px"},
+    {name:"時間足",width:"84px"},
+    {name:"方向",width:"84px"},
+    {name:"シグナル",width:"420px"},
+    {name:"発火時刻（ET）",width:"175px"},
+  ],
+  data:[],
+  pagination:{limit:10},
+  language:{noRecordsFound:"受信待ち…"},
+  style:{table:{width:"100%"},th,td},
+}).render(document.getElementById("signals"));
+// 数値表示ヘルパー：null/未定義は「未受信」、数値は指定処理
+function money0(v){ return (v==null||v==="") ? null : "$"+Number(v).toFixed(2); }
+function pct0(v){ return (v==null||v==="") ? null : Number(v).toFixed(2)+"%"; }
+// 資金メトリクスを各カードへ流し込む（無い項目は「未受信」＝グレー表示）
+function putMetrics(prefix, m){
+  const set=(id,val)=>{ const el=document.getElementById(id); if(!el) return;
+    if(val==null){ el.textContent="未受信"; el.classList.add("muted"); }
+    else { el.textContent=val; el.classList.remove("muted"); } };
+  m = m || {};
+  set(prefix+"-cash", money0(m.cash));
+  set(prefix+"-realized", money0(m.realized_pnl));
+  set(prefix+"-win", pct0(m.win_rate_pct));
+  set(prefix+"-closed", (m.closed_trades==null? null : String(m.closed_trades)));
+}
+// 発火履歴の1行を作る（方向 long/short → 買/売）
+function sigRowOf(sig, label){
+  const dir = String(sig.direction||"").toLowerCase();
+  return [
+    H(tag(label)),
+    H("<b>"+(sig.symbol||"")+"</b>"),
+    sig.tf||"",
+    dir==="short" ? "売" : (dir==="long" ? "買" : (sig.direction||"")),
+    H("<span title=\""+(sig.recipe_id||"")+"\">"+(sig.recipe_id||"")+"</span>"),
+    sig.signal_bar ? (sig.signal_bar+" ET") : "—",
+  ];
+}
+// 発火履歴を交互並びで組む
+function sigRows(d){
+  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.signals)   || [];
+  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.signals) || [];
+  const out=[];
+  const n=Math.max(g.length, s.length);
+  for(let i=0;i<n;i++){
+    if(i<g.length) out.push(sigRowOf(g[i],"新GSBT"));
+    if(i<s.length) out.push(sigRowOf(s[i],"Shadow FW"));
+  }
+  return out;
+}
+function setConn(state){
+  const dot=document.getElementById("dot"), lbl=document.getElementById("connlbl");
+  dot.className="dot "+state;
+  lbl.textContent = state==="ok"?"受信中":(state==="wait"?"接続中…":"切断・再接続中");
+}
+function render(d){
+  try{
+    document.getElementById("et").textContent = fmtET(d.generated_at_utc);
+    const fs = d.feed && d.feed.state ? d.feed.state : "—";
+    document.getElementById("market").textContent = fs==="CLOSED" ? "クローズ" : fs;
+    const gc = d.strategy&&d.strategy.gsbt ? (d.strategy.gsbt.position_count||0) : 0;
+    const sc = d.strategy&&d.strategy.shadow ? (d.strategy.shadow.position_count||0) : 0;
+    document.getElementById("sources").textContent = "新GSBT "+gc+" / Shadow "+sc;
+    const marks = d.positions ? (d.positions.mark_available_total||0) : 0;
+    const pEl=document.getElementById("price");
+    if(marks>0){ pEl.textContent="受信中"; pEl.classList.remove("muted"); }
+    else { pEl.textContent="未受信(閉場)"; pEl.classList.add("muted"); }
+    document.getElementById("g-hold").textContent = gc;
+    document.getElementById("s-hold").textContent = sc;
+    const rows=posRows(d);
+    posGrid.updateConfig({data:rows}).forceRender();
+    document.getElementById("pos-badge").textContent = "受信 "+rows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
+    // 資金メトリクス（現金・実現損益・勝率・決済件数）を反映
+    putMetrics("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.metrics   : null);
+    putMetrics("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.metrics : null);
+    // シグナル発火履歴を反映
+    const srows = sigRows(d);
+    sigGrid.updateConfig({data:srows}).forceRender();
+    document.getElementById("sig-badge").textContent = "受信 "+srows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
+    document.getElementById("detail").textContent =
+      "revision="+(d.revision??"—")+" ・ status="+(d.status||"—")+" ・ 価格元="+(d.mark_source||"—")+" ・ 生成 "+fmtET(d.generated_at_utc);
+    setConn("ok");
+  }catch(e){
+    document.getElementById("detail").textContent = "受信データ解釈エラー: "+e.message;
+  }
+}
+let es=null;
+function connect(){
+  setConn("wait");
+  es = new EventSource(SSE_URL);
+  es.addEventListener("live_positions", ev=>{ try{ render(JSON.parse(ev.data)); }catch(e){} });
+  es.onmessage = ev=>{ try{ render(JSON.parse(ev.data)); }catch(e){} };
+  es.onopen = ()=> setConn("ok");
+  es.onerror = ()=>{ setConn("ng"); };
+}
+// 発火履歴を開いたとき、正しい列幅で描き直す（閉状態で作られた表の崩れ防止）
+document.getElementById("sig-section").addEventListener("toggle", function(){
+  if(this.open){ try{ sigGrid.forceRender(); }catch(e){} }
+});
+connect();
+</script>
+</body>
+</html>
