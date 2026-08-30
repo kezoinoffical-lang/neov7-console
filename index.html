@@ -76,7 +76,6 @@
 </style>
 </head>
 <body>
-
 <header>
   <div class="brand"><div class="name">NEOV7</div><div class="sub">新GSBT × Shadow FW</div></div>
   <div class="status">
@@ -87,7 +86,6 @@
     <div class="cell"><div class="l">接続</div><div class="v"><span class="conn"><span class="dot wait" id="dot"></span><span id="connlbl">接続中…</span></span></div></div>
   </div>
 </header>
-
 <div class="cards">
   <div class="card"><h2>新GSBT</h2><div class="kpis">
     <div class="kpi"><div class="l">現金</div><div class="v muted">別ソース未取得</div></div>
@@ -106,25 +104,18 @@
     <div class="kpi"><div class="l">保有件数</div><div class="v" id="s-hold">—</div></div>
   </div></div>
 </div>
-
 <div class="section"><div class="head"><h2>シグナル発火履歴</h2><span class="badge">別ソース(RESULTS)・未接続</span></div><div class="body"><div class="empty">発火履歴は数字サーバー(建玉/価格)とは別のソースにあります。次工程で接続します。</div></div></div>
-
 <div class="section"><div class="head"><h2>保有銘柄</h2><span class="badge" id="pos-badge">受信待ち</span></div><div class="body"><div id="positions"></div></div></div>
-
 <div class="section"><div class="head"><h2>取引履歴</h2><span class="badge">別ソース(CLOSED_TRADES)・未接続</span></div><div class="body"><div class="empty">決済履歴は別ソースにあります。次工程で接続します。</div></div></div>
-
 <div class="section"><div class="head"><h2>詳細情報</h2></div><div class="body"><div class="empty" id="detail">接続待ち</div></div></div>
-
 <script>
 const SSE_URL = "https://neov7-ec2.tail365d42.ts.net/sidecar/events";
-
 const H = gridjs.html;
 const money = v => (v==null||v==="") ? "" : "$"+Number(v).toFixed(2);
 const share = (a,b)=>{ if(a==null||b==null||(a+b)<=0) return ""; return Math.round(a/(a+b)*100)+"%"; };
 const uju = `<span class="muted">価格未受信</span>`;
 function tag(label){const c=label.includes("Shadow")?"shadow":"gsbt";return `<span class="tag ${c}">${label}</span>`;}
 function fmtET(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
-
 function bracketLive(p){
   const s1=share(p.sl1_qty,p.sl2_qty), s2=share(p.sl2_qty,p.sl1_qty);
   const P=[
@@ -135,34 +126,35 @@ function bracketLive(p){
   ];
   return `<div class="bracket">${P.join("")}</div>`;
 }
-
+function rowOf(p,label){
+  const cur = (p.mark_available && p.current_price!=null) ? money(p.current_price) : H(uju);
+  const ptime = p.price_at_utc ? fmtET(p.price_at_utc) : H(uju);
+  const upnl = (p.unrealized_pnl!=null) ? money(p.unrealized_pnl) : H(uju);
+  const uprate = (p.unrealized_pnl_rate!=null) ? (Number(p.unrealized_pnl_rate)*100).toFixed(2)+"%" : H(uju);
+  return [
+    H(tag(label)),
+    H(`<b>${p.symbol}</b> <span class="muted">${p.tf}</span>`),
+    p.direction==="short" ? "売建" : "買付",
+    p.remaining,
+    money(p.entry_price),
+    cur, ptime, upnl, uprate,
+    H(bracketLive(p)),
+  ];
+}
 function posRows(d){
+  // 銘柄ごとに 新GSBT → Shadow FW の交互並び（同じ銘柄を上下ペアにして見比べやすくする）
+  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
+  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
   const out=[];
-  const put=(side,label)=>{
-    const arr=(d.strategy && d.strategy[side] && d.strategy[side].live_positions) || [];
-    arr.forEach(p=>{
-      const cur = (p.mark_available && p.current_price!=null) ? money(p.current_price) : H(uju);
-      const ptime = p.price_at_utc ? fmtET(p.price_at_utc) : H(uju);
-      const upnl = (p.unrealized_pnl!=null) ? money(p.unrealized_pnl) : H(uju);
-      const uprate = (p.unrealized_pnl_rate!=null) ? (Number(p.unrealized_pnl_rate)*100).toFixed(2)+"%" : H(uju);
-      out.push([
-        H(tag(label)),
-        H(`<b>${p.symbol}</b> <span class="muted">${p.tf}</span>`),
-        p.direction==="short" ? "売建" : "買付",
-        p.remaining,
-        money(p.entry_price),
-        cur, ptime, upnl, uprate,
-        H(bracketLive(p)),
-      ]);
-    });
-  };
-  put("gsbt","新GSBT"); put("shadow","Shadow FW");
+  const n=Math.max(g.length, s.length);
+  for(let i=0;i<n;i++){
+    if(i<g.length) out.push(rowOf(g[i],"新GSBT"));
+    if(i<s.length) out.push(rowOf(s[i],"Shadow FW"));
+  }
   return out;
 }
-
 const th={background:"#0b121c",color:"#8b97a7",borderColor:"#33475f",fontSize:"13px"};
 const td={background:"#0f1722",color:"#e6edf3",borderColor:"#33475f",verticalAlign:"top"};
-
 const posGrid = new gridjs.Grid({
   columns:[
     {name:"系統",width:"117px"},
@@ -181,7 +173,6 @@ const posGrid = new gridjs.Grid({
   language:{noRecordsFound:"受信待ち…"},
   style:{table:{width:"100%"},th,td},
 }).render(document.getElementById("positions"));
-
 function setConn(state){
   const dot=document.getElementById("dot"), lbl=document.getElementById("connlbl");
   dot.className="dot "+state;
@@ -211,7 +202,6 @@ function render(d){
     document.getElementById("detail").textContent = "受信データ解釈エラー: "+e.message;
   }
 }
-
 let es=null;
 function connect(){
   setConn("wait");
