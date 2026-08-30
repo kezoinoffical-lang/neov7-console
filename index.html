@@ -17,12 +17,13 @@
     -webkit-text-size-adjust:100%;}
   header{display:flex;flex-wrap:wrap;align-items:stretch;
     background:#05080d;border-bottom:1px solid var(--line);}
-  header .brand{padding:12px 20px;flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;}
+  header .brand{padding:12px 20px;flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;}
   header .brand .name{font-size:22px;font-weight:800;color:var(--accent);letter-spacing:1px;line-height:1.1;}
   header .brand .sub{font-size:12px;color:var(--label);margin-top:2px;}
-  header .cell{padding:8px 16px;border-left:1px solid var(--line);flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;}
-  header .cell .l{font-size:11px;color:var(--label);}
-  header .cell .v{font-size:15px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;}
+  header .status{display:flex;}
+  header .cell{padding:8px 20px;border-left:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;}
+  header .cell .l{font-size:11px;color:var(--label);white-space:nowrap;}
+  header .cell .v{font-size:14px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap;}
   header .cell .v.muted{color:var(--label);font-weight:400;}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 16px 4px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;}
@@ -55,8 +56,9 @@
   @media(max-width:820px){
     .cards{grid-template-columns:1fr;padding:12px 12px 4px;gap:12px;}
     .section{margin:12px 12px 8px;}
-    header .cell{flex:1 1 50%;}
-    header .brand{padding:14px 16px;}
+    header .brand{padding:14px 16px;flex:1 1 100%;}
+    header .status{flex-wrap:wrap;width:100%;border-top:1px solid var(--line);}
+    header .cell{flex:1 1 33%;}
   }
   @media(max-width:520px){
     body{font-size:13px;}
@@ -74,11 +76,13 @@
 
 <header>
   <div class="brand"><div class="name">NEOV7</div><div class="sub">新GSBT × Shadow FW</div></div>
-  <div class="cell"><div class="l">米国東部時間</div><div class="v" id="et">2026/08/30 07:20 EDT</div></div>
-  <div class="cell"><div class="l">市場</div><div class="v" id="market">OVERNIGHT</div></div>
-  <div class="cell"><div class="l">正本取得</div><div class="v" id="sources">7 / 7</div></div>
-  <div class="cell"><div class="l">価格</div><div class="v muted" id="price">閉場</div></div>
-  <div class="cell"><div class="l">最終約定時刻</div><div class="v muted" id="lastfill">未出力</div></div>
+  <div class="status">
+    <div class="cell"><div class="l">米国東部時間</div><div class="v" id="et">2026/08/30 07:20 EDT</div></div>
+    <div class="cell"><div class="l">市場</div><div class="v" id="market">OVERNIGHT</div></div>
+    <div class="cell"><div class="l">正本取得</div><div class="v" id="sources">7 / 7</div></div>
+    <div class="cell"><div class="l">価格</div><div class="v muted" id="price">閉場</div></div>
+    <div class="cell"><div class="l">最終約定時刻</div><div class="v muted" id="lastfill">未出力</div></div>
+  </div>
 </header>
 
 <div class="cards">
