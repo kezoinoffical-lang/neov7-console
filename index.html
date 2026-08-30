@@ -47,7 +47,8 @@
   .gridjs-pagination .gridjs-pages button{background:var(--panel)!important;color:var(--text)!important;border:1px solid #33475f!important;}
   .gridjs-pagination .gridjs-pages button:disabled{color:var(--label)!important;}
   .gridjs-pagination .gridjs-pages button.gridjs-currentPage{background:#1a2740!important;}
-  .bracket{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;line-height:1.5;white-space:nowrap;}
+  .bracket{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;row-gap:4px;align-content:start;line-height:1.6;white-space:normal;}
+  .bracket>span{font-size:14px;color:var(--label);}
   .bracket .u{color:var(--label);font-style:italic;margin-left:4px;font-size:12px;}
   .muted{color:var(--label);}
   .tag{display:inline-block;padding:3px 12px;border-radius:6px;font-size:12px;font-weight:700;}
@@ -126,12 +127,12 @@ function fmtET(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleS
 
 function bracketLive(p){
   const s1=share(p.sl1_qty,p.sl2_qty), s2=share(p.sl2_qty,p.sl1_qty);
-  const P=[
-    `<span title="${p.sl1}">SL1 ${money(p.sl1)}<span class="u">(${s1})</span></span>`,
-    `<span title="${p.sl2}">SL2 ${money(p.sl2)}<span class="u">(${s2})</span></span>`,
-    `<span title="${p.tp1}">T1 ${money(p.tp1)}<span class="u">(${s1})</span></span>`,
-    `<span title="${p.tp2}">T2 ${money(p.tp2)}<span class="u">(${s2})</span></span>`,
-  ];
+  const f = Number(p.sl1_qty)>0, s = Number(p.sl2_qty)>0;
+  const P=[];
+  if(f) P.push(`<span title="${p.sl1}">SL1 ${money(p.sl1)}<span class="u">(${s1})</span></span>`);
+  if(s) P.push(`<span title="${p.sl2}">SL2 ${money(p.sl2)}<span class="u">(${s2})</span></span>`);
+  if(f && p.tp1!=null) P.push(`<span title="${p.tp1}">T1 ${money(p.tp1)}<span class="u">(${s1})</span></span>`);
+  if(s && p.tp2!=null) P.push(`<span title="${p.tp2}">T2 ${money(p.tp2)}<span class="u">(${s2})</span></span>`);
   return `<div class="bracket">${P.join("")}</div>`;
 }
 
