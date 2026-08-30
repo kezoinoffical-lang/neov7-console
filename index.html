@@ -39,6 +39,12 @@
   .section .head h2{margin:0;font-size:17px;}
   .section .head .badge{font-size:11px;color:var(--label);}
   .section .body{padding:6px 6px 12px;}
+  /* 折りたたみセクション（details/summary） */
+  details.fold > summary.head{cursor:pointer;list-style:none;user-select:none;}
+  details.fold > summary.head::-webkit-details-marker{display:none;}
+  details.fold > summary.head .caret{display:inline-block;margin-right:8px;font-size:12px;color:var(--label);transition:transform .15s;}
+  details.fold[open] > summary.head .caret{transform:rotate(90deg);}
+  details.fold > summary.head:hover .caret{color:var(--accent);}
   .gridjs-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border-color:#33475f!important;}
   .gridjs-table{font-size:14px;width:100%;table-layout:fixed!important;}
   .gridjs-th,.gridjs-td{border:1px solid #33475f!important;white-space:nowrap;}
@@ -104,7 +110,7 @@
     <div class="kpi"><div class="l">保有件数</div><div class="v" id="s-hold">—</div></div>
   </div></div>
 </div>
-<div class="section"><div class="head"><h2>シグナル発火履歴</h2><span class="badge" id="sig-badge">受信待ち</span></div><div class="body"><div id="signals"></div></div></div>
+<details class="section fold" id="sig-section"><summary class="head"><h2><span class="caret">▶</span>シグナル発火履歴</h2><span class="badge" id="sig-badge">受信待ち</span></summary><div class="body"><div id="signals"></div></div></details>
 <div class="section"><div class="head"><h2>保有銘柄</h2><span class="badge" id="pos-badge">受信待ち</span></div><div class="body"><div id="positions"></div></div></div>
 <div class="section"><div class="head"><h2>取引履歴</h2><span class="badge">別ソース(CLOSED_TRADES)・未接続</span></div><div class="body"><div class="empty">決済履歴は別ソースにあります。次工程で接続します。</div></div></div>
 <div class="section"><div class="head"><h2>詳細情報</h2></div><div class="body"><div class="empty" id="detail">接続待ち</div></div></div>
@@ -180,7 +186,7 @@ const sigGrid = new gridjs.Grid({
     {name:"銘柄",width:"110px"},
     {name:"時間足",width:"84px"},
     {name:"方向",width:"84px"},
-    {name:"シグナル",width:"auto"},
+    {name:"シグナル",width:"420px"},
     {name:"発火時刻（ET）",width:"175px"},
   ],
   data:[],
@@ -249,29 +255,3 @@ function render(d){
     posGrid.updateConfig({data:rows}).forceRender();
     document.getElementById("pos-badge").textContent = "受信 "+rows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
     // 資金メトリクス（現金・実現損益・勝率・決済件数）を反映
-    putMetrics("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.metrics   : null);
-    putMetrics("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.metrics : null);
-    // シグナル発火履歴を反映
-    const srows = sigRows(d);
-    sigGrid.updateConfig({data:srows}).forceRender();
-    document.getElementById("sig-badge").textContent = "受信 "+srows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
-    document.getElementById("detail").textContent =
-      "revision="+(d.revision??"—")+" ・ status="+(d.status||"—")+" ・ 価格元="+(d.mark_source||"—")+" ・ 生成 "+fmtET(d.generated_at_utc);
-    setConn("ok");
-  }catch(e){
-    document.getElementById("detail").textContent = "受信データ解釈エラー: "+e.message;
-  }
-}
-let es=null;
-function connect(){
-  setConn("wait");
-  es = new EventSource(SSE_URL);
-  es.addEventListener("live_positions", ev=>{ try{ render(JSON.parse(ev.data)); }catch(e){} });
-  es.onmessage = ev=>{ try{ render(JSON.parse(ev.data)); }catch(e){} };
-  es.onopen = ()=> setConn("ok");
-  es.onerror = ()=>{ setConn("ng"); };
-}
-connect();
-</script>
-</body>
-</html>
