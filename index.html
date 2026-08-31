@@ -81,6 +81,13 @@
   .conn{display:inline-flex;align-items:center;gap:6px;font-size:12px;}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--label);}
   .dot.ok{background:var(--green);} .dot.ng{background:var(--red);} .dot.wait{background:var(--warn,#d29922);}
+  /* 取引履歴の決済理由＝詳細ボタン（常時非表示・押した時だけ小窓） */
+  .rsn-btn{background:var(--panel2);color:var(--accent);border:1px solid #4a5f78;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
+  .rsn-btn:hover{background:#1a2740;}
+  #rsn-pop{position:fixed;z-index:9999;display:none;max-width:280px;background:#0b121c;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.5);font-size:13px;line-height:1.5;}
+  #rsn-pop .t{color:var(--label);font-size:11px;margin-bottom:4px;}
+  #rsn-pop .ja{color:var(--text);font-weight:700;font-size:15px;}
+  #rsn-pop .raw{color:var(--label);font-size:11px;margin-top:6px;word-break:break-all;}
   @media(max-width:820px){
     .cards{grid-template-columns:1fr;padding:12px 12px 4px;gap:12px;}
     .section{margin:12px 12px 8px;}
@@ -138,6 +145,7 @@
 <div class="section"><div class="head"><h2>保有銘柄</h2><span class="badge" id="pos-badge">受信待ち</span></div><div class="body"><div id="positions"></div></div></div>
 <details class="section fold" id="trade-section"><summary class="head"><h2><span class="caret">▶</span>取引履歴</h2><span class="badge" id="trade-badge">受信待ち</span></summary><div class="body"><div id="trades"></div></div></details>
 <div class="section"><div class="head"><h2>詳細情報</h2></div><div class="body"><div class="empty" id="detail">接続待ち</div></div></div>
+<div id="rsn-pop"><div class="t">決済理由</div><div class="ja" id="rsn-ja"></div><div class="raw" id="rsn-raw"></div></div>
 <script>
 const SSE_URL = "https://neov7-ec2.tail365d42.ts.net/sidecar/events";
 const H = gridjs.html;
@@ -321,39 +329,63 @@ const sigGrid = new gridjs.Grid({
 // 取引履歴テーブル（決済・両系統を決済時刻の新しい順）
 const tradeGrid = new gridjs.Grid({
   columns:[
-    {name:"系統",width:"130px"},
-    {name:"銘柄",width:"104px"},
-    {name:"売買",width:"70px"},
-    {name:"数量",width:"78px"},
-    {name:"取得価格",width:"96px"},
-    {name:"決済価格",width:"96px"},
-    {name:"実現損益",width:"110px"},
-    {name:"損益率",width:"92px"},
-    {name:"決済理由",width:"96px"},
-    {name:"決済時刻（ET）",width:"170px"},
+    {name:"系統",width:"120px"},
+    {name:"銘柄",width:"96px"},
+    {name:"売買",width:"64px"},
+    {name:"数量",width:"64px"},
+    {name:"取得価格",width:"84px"},
+    {name:"決済価格",width:"84px"},
+    {name:"実現損益",width:"104px"},
+    {name:"損益率",width:"80px"},
+    {name:"決済時刻（ET）",width:"156px"},
+    {name:"詳細",width:"72px"},
   ],
   data:[],
   pagination:{limit:10},
   language:{noRecordsFound:"決済なし"},
   style:{table:{width:"100%"},th,td},
 }).render(document.getElementById("trades"));
+// 決済理由の英語コード → 日本語ラベル（テキストのみ返す。詳細ボタンで使う）
+function exitReasonJaText(reason){
+  const r = String(reason||"");
+  const MAP = {
+    "TRAILING_STOP":"トレール決済",
+    "TP1_AND_TP2_SAME_BAR":"T1・T2同時約定",
+    "TP1_HIT":"T1利確",
+    "TP2_HIT":"T2利確",
+    "SL1_HIT":"SL1損切",
+    "SL2_HIT":"SL2損切",
+    "STOP_LOSS":"損切",
+    "TAKE_PROFIT":"利確",
+    "MAX_HOLD":"保有期限切れ",
+    "MANUAL":"手動",
+  };
+  return MAP[r] || (r || "—");
+}
+// 空欄セルは「—」で埋める（CLOSEイベントに数量/価格が無い時の見栄え）
+function orDash(v){ return (v==null||v==="") ? H('<span class="muted">—</span>') : v; }
 // 決済1行を作る
 function tradeRowOf(t, label){
   const dir = String(t.direction||"").toLowerCase();
   const ep = Number(t.entry_price), sh = Number(t.shares), pnl = Number(t.net_pnl);
-  const rate = (isFinite(ep) && isFinite(sh) && ep*sh>0 && isFinite(pnl)) ? (pnl/(ep*sh)*100).toFixed(2)+"%" : "";
+  const rate = (isFinite(ep) && isFinite(sh) && ep*sh>0 && isFinite(pnl)) ? (pnl/(ep*sh)*100).toFixed(2)+"%" : null;
   const pnlColor = (isFinite(pnl) && pnl>0) ? "#3fb950" : (isFinite(pnl) && pnl<0) ? "#f85149" : "inherit";
+  const dirCell = (t.direction==null||t.direction==="") ? "" : (dir==="short" ? "売建" : "買付");
+  // 決済理由は常時表示しない。詳細ボタンに日本語ラベル＋元コードを data 属性で持たせ、押した時だけ小窓表示
+  const rj = String(t.exit_reason||"");
+  const rjJa = exitReasonJaText(rj);
+  const btn = '<button type="button" class="rsn-btn" data-reason-ja="'+encodeURIComponent(rjJa)+'" data-reason-raw="'+encodeURIComponent(rj)+'">理由</button>';
   return [
     H(tag(label)),
     H("<b>"+(t.symbol||"")+"</b> <span class=\"muted\">"+(t.tf||"")+"</span>"),
-    dir==="short" ? "売建" : "買付",
-    t.shares,
-    money(t.entry_price),
-    money(t.exit_price),
+    dirCell==="" ? H('<span class="muted">—</span>') : dirCell,
+    orDash(t.shares),
+    orDash(money(t.entry_price)),
+    orDash(money(t.exit_price)),
     H('<span style="color:'+pnlColor+'">'+money(t.net_pnl)+"</span>"),
-    rate,
-    t.exit_reason||"",
-    t.exit_ts ? (t.exit_ts+" ET") : "—",
+    orDash(rate),
+    t.exit_ts ? fmtETnoSuffix(t.exit_ts) : H('<span class="muted">—</span>'),
+    H(btn),
   ];
 }
 // 取引履歴を両系統統合し決済時刻の新しい順に
@@ -493,6 +525,37 @@ document.getElementById("sig-section").addEventListener("toggle", function(){
 document.getElementById("trade-section").addEventListener("toggle", function(){
   if(this.open){ try{ tradeGrid.forceRender(); }catch(e){} }
 });
+// 決済理由＝詳細ボタン。押した時だけボタン近くに小窓表示。もう一度押す/外側クリックで閉じる
+(function(){
+  const pop=document.getElementById("rsn-pop");
+  const jaEl=document.getElementById("rsn-ja"), rawEl=document.getElementById("rsn-raw");
+  let curBtn=null;
+  function hide(){ pop.style.display="none"; curBtn=null; }
+  document.addEventListener("click", function(ev){
+    const btn=ev.target.closest ? ev.target.closest(".rsn-btn") : null;
+    if(btn){
+      ev.preventDefault(); ev.stopPropagation();
+      if(curBtn===btn){ hide(); return; }        // 同じボタン再クリックで閉じる
+      const ja=decodeURIComponent(btn.getAttribute("data-reason-ja")||"");
+      const raw=decodeURIComponent(btn.getAttribute("data-reason-raw")||"");
+      jaEl.textContent = ja || "—";
+      rawEl.textContent = (raw && raw!==ja) ? raw : "";   // 日本語化された時だけ元コードも出す
+      // ボタンの下（画面端は上）に配置
+      pop.style.display="block";
+      const r=btn.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
+      let left=r.left, top=r.bottom+6;
+      if(left+pw > window.innerWidth-8) left=window.innerWidth-pw-8;
+      if(left<8) left=8;
+      if(top+ph > window.innerHeight-8) top=r.top-ph-6;   // 下に入らなければ上へ
+      pop.style.left=left+"px"; pop.style.top=top+"px";
+      curBtn=btn;
+      return;
+    }
+    if(pop.style.display==="block" && !ev.target.closest("#rsn-pop")) hide();  // 外側クリックで閉じる
+  }, true);
+  window.addEventListener("scroll", hide, true);
+  window.addEventListener("resize", hide);
+})();
 connect();
 </script>
 </body>
