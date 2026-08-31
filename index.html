@@ -62,6 +62,7 @@
   .ptbl td{background:#0f1722;color:#e6edf3;}
   .ptbl td.pc9{white-space:normal;}
   .ptbl td.pc0{text-align:center;}
+  .ptbl td.pc6{text-align:center;}
   .ptbl-empty{text-align:center;color:var(--label);padding:18px!important;}
   .ptbl-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 6px 2px;font-size:12px;}
   .ptbl-pager{display:inline-flex;align-items:center;gap:8px;}
@@ -145,6 +146,8 @@ const share = (a,b)=>{ if(a==null||b==null||(a+b)<=0) return ""; return Math.rou
 const uju = `<span class="muted">価格未受信</span>`;
 function tag(label){const c=label.includes("Shadow")?"shadow":"gsbt";return `<span class="tag ${c}">${label}</span>`;}
 function fmtET(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
+// ETサフィックス無し（列見出しに（ET）がある表用）
+function fmtETnoSuffix(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }catch(e){ return String(iso); } }
 // ヘッダー用の短縮ET（年を省いて桁を詰める → スマホで切れにくい）
 function fmtETshort(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
 function bracketLive(p){
@@ -199,10 +202,10 @@ function rowHtmlOf(p,label){
   let cur, ptime;
   if (p.mark_available && p.current_price!=null) {
     cur = money(p.current_price);
-    ptime = p.price_at_utc ? fmtET(p.price_at_utc) : uju;
+    ptime = p.price_at_utc ? fmtETnoSuffix(p.price_at_utc) : uju;
   } else if (p.prev_close!=null) {
     cur = money(p.prev_close) + ' <span class="u">前回終値</span>';
-    ptime = p.prev_close_at ? (fmtET(p.prev_close_at) + ' <span class="u">前回</span>') : uju;
+    ptime = p.prev_close_at ? (fmtETnoSuffix(p.prev_close_at) + ' <span class="u">前回</span>') : uju;
   } else { cur = uju; ptime = uju; }
   let upnl = uju;
   if (p.unrealized_pnl!=null){ const v=Number(p.unrealized_pnl); const c=v>0?"#3fb950":(v<0?"#f85149":"inherit"); upnl='<span style="color:'+c+'">'+money(v)+'</span>'; }
@@ -245,7 +248,7 @@ const td={background:"#0f1722",color:"#e6edf3",borderColor:"#4a5f78",verticalAli
 // ===== 保有銘柄テーブル＝素HTMLで自前管理（値だけ差し替え・再描画なし・ページ保持）=====
 const POS_COLS = [
   {name:"系統",w:130},{name:"銘柄",w:120},{name:"売買",w:76},{name:"残数量",w:87},
-  {name:"取得価格",w:101},{name:"現在値",w:118},{name:"価格時刻（ET）",w:143},
+  {name:"取得価格",w:101},{name:"現在値",w:101},{name:"価格時刻（ET）",w:168},
   {name:"含み損益",w:118},{name:"含み損益率",w:118},{name:"損切／利確",w:292},
 ];
 const POS_PAGE_LIMIT = 8;
