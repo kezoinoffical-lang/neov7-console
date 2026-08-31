@@ -54,6 +54,20 @@
   .gridjs-pagination .gridjs-pages button{background:var(--panel)!important;color:var(--text)!important;border:1px solid #4a5f78!important;}
   .gridjs-pagination .gridjs-pages button:disabled{color:var(--label)!important;}
   .gridjs-pagination .gridjs-pages button.gridjs-currentPage{background:#1a2740!important;}
+  /* 保有銘柄＝素HTMLテーブル（値だけ更新・ページ保持） */
+  .ptbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #4a5f78;border-radius:8px;}
+  .ptbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px;}
+  .ptbl th,.ptbl td{border:1px solid #4a5f78;padding:8px 10px;white-space:nowrap;vertical-align:top;text-align:left;}
+  .ptbl th{background:#0b121c;color:#9fabbd;font-size:13px;font-weight:600;}
+  .ptbl td{background:#0f1722;color:#e6edf3;}
+  .ptbl td.pc9{white-space:normal;}
+  .ptbl td.pc0{text-align:center;}
+  .ptbl-empty{text-align:center;color:var(--label);padding:18px!important;}
+  .ptbl-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 6px 2px;font-size:12px;}
+  .ptbl-pager{display:inline-flex;align-items:center;gap:8px;}
+  .ptbl-pager button{background:var(--panel);color:var(--text);border:1px solid #4a5f78;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;}
+  .ptbl-pager button:disabled{color:var(--label);cursor:default;opacity:.5;}
+  @media(max-width:520px){ .ptbl{font-size:12px;} .ptbl th,.ptbl td{padding:6px 7px;} }
   .bracket{display:grid;grid-template-columns:auto auto;gap:2px 22px;line-height:1.45;white-space:nowrap;font-size:13px;}
   .bracket .u{color:var(--label);font-style:italic;margin-left:3px;font-size:11px;}
   .muted{color:var(--label);}
@@ -180,26 +194,112 @@ function posRows(d){
   }
   return out;
 }
+// 素HTML版の1行（10セルすべてHTML文字列）。値セル(現在値/価格時刻/含み損益/含み損益率)は毎tick更新される
+function rowHtmlOf(p,label){
+  let cur, ptime;
+  if (p.mark_available && p.current_price!=null) {
+    cur = money(p.current_price);
+    ptime = p.price_at_utc ? fmtET(p.price_at_utc) : uju;
+  } else if (p.prev_close!=null) {
+    cur = money(p.prev_close) + ' <span class="u">前回終値</span>';
+    ptime = p.prev_close_at ? (fmtET(p.prev_close_at) + ' <span class="u">前回</span>') : uju;
+  } else { cur = uju; ptime = uju; }
+  let upnl = uju;
+  if (p.unrealized_pnl!=null){ const v=Number(p.unrealized_pnl); const c=v>0?"#3fb950":(v<0?"#f85149":"inherit"); upnl='<span style="color:'+c+'">'+money(v)+'</span>'; }
+  let uprate = uju;
+  if (p.unrealized_pnl_rate!=null){ const rv=Number(p.unrealized_pnl_rate); const c=rv>0?"#3fb950":(rv<0?"#f85149":"inherit"); uprate='<span style="color:'+c+'">'+rv.toFixed(2)+'%</span>'; }
+  return [
+    tag(label),
+    "<b>"+(p.symbol||"")+"</b> <span class=\"muted\">"+(p.tf||"")+"</span>",
+    p.direction==="short" ? "売建" : "買付",
+    String(p.remaining==null?"":p.remaining),
+    money(p.entry_price),
+    cur, ptime, upnl, uprate,
+    bracketLive(p),
+  ];
+}
+// 全行(交互並び)をHTML文字列配列で
+function posRowsHtml(d){
+  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
+  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const out=[]; const n=Math.max(g.length, s.length);
+  for(let i=0;i<n;i++){
+    if(i<g.length) out.push(rowHtmlOf(g[i],"新GSBT"));
+    if(i<s.length) out.push(rowHtmlOf(s[i],"Shadow FW"));
+  }
+  return out;
+}
+// 顔ぶれキー（系統+銘柄+時間足+trade_idの並び。これが変わった時だけ行を作り直す）
+function posStructOf(d){
+  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
+  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const parts=[]; const n=Math.max(g.length, s.length);
+  for(let i=0;i<n;i++){
+    if(i<g.length){ const p=g[i]; parts.push("G|"+p.symbol+"|"+p.tf+"|"+(p.trade_id||"")); }
+    if(i<s.length){ const p=s[i]; parts.push("S|"+p.symbol+"|"+p.tf+"|"+(p.trade_id||"")); }
+  }
+  return parts.join(",");
+}
 const th={background:"#0b121c",color:"#9fabbd",borderColor:"#4a5f78",fontSize:"13px"};
 const td={background:"#0f1722",color:"#e6edf3",borderColor:"#4a5f78",verticalAlign:"top"};
-const posGrid = new gridjs.Grid({
-  columns:[
-    {name:"系統",width:"130px"},
-    {name:"銘柄",width:"120px"},
-    {name:"売買",width:"76px"},
-    {name:"残数量",width:"87px"},
-    {name:"取得価格",width:"101px"},
-    {name:"現在値",width:"118px"},
-    {name:"価格時刻（ET）",width:"143px"},
-    {name:"含み損益",width:"118px"},
-    {name:"含み損益率",width:"118px"},
-    {name:"損切／利確",width:"292px"},
-  ],
-  data:[],
-  pagination:{limit:8},
-  language:{noRecordsFound:"受信待ち…"},
-  style:{table:{width:"100%"},th,td},
-}).render(document.getElementById("positions"));
+// ===== 保有銘柄テーブル＝素HTMLで自前管理（値だけ差し替え・再描画なし・ページ保持）=====
+const POS_COLS = [
+  {name:"系統",w:130},{name:"銘柄",w:120},{name:"売買",w:76},{name:"残数量",w:87},
+  {name:"取得価格",w:101},{name:"現在値",w:118},{name:"価格時刻（ET）",w:143},
+  {name:"含み損益",w:118},{name:"含み損益率",w:118},{name:"損切／利確",w:292},
+];
+const POS_PAGE_LIMIT = 8;
+let posPage = 0;          // 現在ページ（自前管理・更新で保持）
+let posRowsCache = [];    // 直近の全行データ（HTML文字列配列の配列）
+let posStructKey = "";    // 行の顔ぶれキー（変わった時だけ行を作り直す）
+function posInit(){
+  const box=document.getElementById("positions");
+  const colgroup = POS_COLS.map(c=>`<col style="width:${c.w}px">`).join("");
+  const thead = "<tr>"+POS_COLS.map(c=>`<th>${c.name}</th>`).join("")+"</tr>";
+  box.innerHTML =
+    `<div class="ptbl-wrap"><table class="ptbl"><colgroup>${colgroup}</colgroup>`+
+    `<thead>${thead}</thead><tbody id="pos-tbody"></tbody></table></div>`+
+    `<div class="ptbl-foot"><span id="pos-count" class="muted"></span>`+
+    `<span class="ptbl-pager"><button id="pos-prev">前へ</button>`+
+    `<span id="pos-pageinfo" class="muted"></span>`+
+    `<button id="pos-next">次へ</button></span></div>`;
+  document.getElementById("pos-prev").addEventListener("click",()=>{ if(posPage>0){posPage--; posPaint();} });
+  document.getElementById("pos-next").addEventListener("click",()=>{ const mx=Math.max(0,Math.ceil(posRowsCache.length/POS_PAGE_LIMIT)-1); if(posPage<mx){posPage++; posPaint();} });
+  posPaint();
+}
+// 現在ページの行だけ描画（tbody中身を作る）
+function posPaint(){
+  const tb=document.getElementById("pos-tbody"); if(!tb) return;
+  const total=posRowsCache.length;
+  const pages=Math.max(1,Math.ceil(total/POS_PAGE_LIMIT));
+  if(posPage>pages-1) posPage=pages-1; if(posPage<0) posPage=0;
+  const start=posPage*POS_PAGE_LIMIT, end=Math.min(total,start+POS_PAGE_LIMIT);
+  if(total===0){ tb.innerHTML=`<tr><td colspan="${POS_COLS.length}" class="ptbl-empty">受信待ち…</td></tr>`; }
+  else{
+    let html="";
+    for(let i=start;i<end;i++){ const r=posRowsCache[i];
+      html+="<tr>"+r.map((cell,ci)=>`<td class="pc${ci}">${cell}</td>`).join("")+"</tr>"; }
+    tb.innerHTML=html;
+  }
+  const ci=document.getElementById("pos-count"); if(ci) ci.textContent = total? (start+1)+"–"+end+" / "+total+"件" : "0件";
+  const pi=document.getElementById("pos-pageinfo"); if(pi) pi.textContent = (posPage+1)+" / "+pages;
+  const pv=document.getElementById("pos-prev"), nx=document.getElementById("pos-next");
+  if(pv) pv.disabled = posPage<=0; if(nx) nx.disabled = posPage>=pages-1;
+}
+// データ更新：顔ぶれが同じなら値のセルだけ差し替え(再描画なし)、変わったら作り直す
+function posUpdate(rows, structKey){
+  const sameStruct = (structKey===posStructKey && rows.length===posRowsCache.length);
+  posRowsCache = rows;
+  if(!sameStruct){ posStructKey=structKey; posPaint(); return; }
+  // 同じ顔ぶれ＝現在表示中ページの値セル(現在値5/価格時刻6/含み損益7/含み損益率8)だけ書き換え
+  const tb=document.getElementById("pos-tbody"); if(!tb) return;
+  const start=posPage*POS_PAGE_LIMIT;
+  const trs=tb.querySelectorAll("tr");
+  trs.forEach((tr,idx)=>{ const r=posRowsCache[start+idx]; if(!r) return;
+    [5,6,7,8].forEach(ci=>{ const cell=tr.querySelector(".pc"+ci); if(cell && cell.innerHTML!==r[ci]) cell.innerHTML=r[ci]; });
+  });
+}
+posInit();
 // シグナル発火履歴テーブル（新GSBT→Shadow FW 交互並び）
 const sigGrid = new gridjs.Grid({
   columns:[
@@ -317,6 +417,24 @@ function setConn(state){
   dot.className="dot "+state;
   lbl.textContent = state==="ok"?"受信中":(state==="wait"?"接続中…":"切断・再接続中");
 }
+// テーブル再描画で1ページ目に戻るのを防ぐ：更新前の現在ページを覚え、再描画後に復元する
+function keepPage(grid, containerId, updateFn){
+  const box=document.getElementById(containerId);
+  // 現在ページ番号を取得（0始まりの内部stateか、DOMのcurrentPageボタンから）
+  let cur=0;
+  try{ cur=(grid.config && grid.config.store && grid.config.store.state && grid.config.store.state.pagination && grid.config.store.state.pagination.page) || 0; }catch(e){}
+  if(!cur && box){ const b=box.querySelector(".gridjs-currentPage"); if(b){ const n=parseInt(b.textContent,10); if(!isNaN(n)&&n>0) cur=n-1; } }
+  updateFn();
+  if(cur>0 && box){
+    // 再描画後、目的ページのボタンを押して復元（描画完了を待つ）
+    setTimeout(()=>{
+      try{
+        const btns=box.querySelectorAll(".gridjs-pages button");
+        for(const b of btns){ if(parseInt(b.textContent,10)===cur+1){ b.click(); break; } }
+      }catch(e){}
+    }, 30);
+  }
+}
 function render(d){
   try{
     document.getElementById("et").textContent = fmtETshort(d.generated_at_utc);
@@ -331,9 +449,9 @@ function render(d){
     else { pEl.textContent="未受信(閉場)"; pEl.classList.add("muted"); }
     document.getElementById("g-hold").textContent = gc;
     document.getElementById("s-hold").textContent = sc;
-    const rows=posRows(d);
-    posGrid.updateConfig({data:rows}).forceRender();
-    document.getElementById("pos-badge").textContent = "受信 "+rows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
+    posUpdate(posRowsHtml(d), posStructOf(d));
+    const posN = posRowsCache.length;
+    document.getElementById("pos-badge").textContent = "受信 "+posN+"件 ・ 更新 "+fmtET(d.generated_at_utc);
     // 資金メトリクス（現金・実現損益・勝率・決済件数）を反映
     putMetrics("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.metrics   : null);
     putMetrics("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.metrics : null);
