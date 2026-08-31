@@ -57,7 +57,9 @@
   .bracket{display:grid;grid-template-columns:auto auto;gap:2px 22px;line-height:1.45;white-space:nowrap;font-size:13px;}
   .bracket .u{color:var(--label);font-style:italic;margin-left:3px;font-size:11px;}
   .muted{color:var(--label);}
-  .tag{display:inline-block;padding:3px 12px;border-radius:6px;font-size:12px;font-weight:700;}
+  .tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap;}
+  /* 系統タグはセル内で中央揃え（新GSBT/Shadow FWの位置を揃える） */
+  .gridjs-td:first-child{text-align:center;}
   .tag.gsbt{background:#12233f;color:#7fb0ff;}
   .tag.shadow{background:#241a3f;color:#b98bff;}
   .empty{padding:18px;color:var(--label);}
@@ -182,7 +184,7 @@ const th={background:"#0b121c",color:"#9fabbd",borderColor:"#4a5f78",fontSize:"1
 const td={background:"#0f1722",color:"#e6edf3",borderColor:"#4a5f78",verticalAlign:"top"};
 const posGrid = new gridjs.Grid({
   columns:[
-    {name:"系統",width:"117px"},
+    {name:"系統",width:"130px"},
     {name:"銘柄",width:"120px"},
     {name:"売買",width:"76px"},
     {name:"残数量",width:"87px"},
@@ -201,7 +203,7 @@ const posGrid = new gridjs.Grid({
 // シグナル発火履歴テーブル（新GSBT→Shadow FW 交互並び）
 const sigGrid = new gridjs.Grid({
   columns:[
-    {name:"系統",width:"117px"},
+    {name:"系統",width:"130px"},
     {name:"銘柄",width:"110px"},
     {name:"時間足",width:"84px"},
     {name:"方向",width:"84px"},
@@ -216,7 +218,7 @@ const sigGrid = new gridjs.Grid({
 // 取引履歴テーブル（決済・両系統を決済時刻の新しい順）
 const tradeGrid = new gridjs.Grid({
   columns:[
-    {name:"系統",width:"110px"},
+    {name:"系統",width:"130px"},
     {name:"銘柄",width:"104px"},
     {name:"売買",width:"70px"},
     {name:"数量",width:"78px"},
