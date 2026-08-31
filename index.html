@@ -277,6 +277,17 @@ function putMetrics(prefix, m){
   set(prefix+"-win", pct0(m.win_rate_pct));
   set(prefix+"-closed", (m.closed_trades==null? null : String(m.closed_trades)));
 }
+// 含み損益カード：各建玉のunrealized_pnlを合計して色付き表示（緑=益/赤=損）
+function putUpnl(prefix, positions){
+  const el=document.getElementById(prefix+"-upnl"); if(!el) return;
+  const arr=Array.isArray(positions)?positions:[];
+  let sum=0, any=false;
+  for(const p of arr){ if(p && p.unrealized_pnl!=null){ sum+=Number(p.unrealized_pnl); any=true; } }
+  if(!any){ el.textContent="未受信"; el.classList.add("muted"); el.style.color=""; return; }
+  el.classList.remove("muted");
+  el.textContent="$"+sum.toFixed(2);
+  el.style.color = sum>0 ? "#3fb950" : (sum<0 ? "#f85149" : "");
+}
 // 発火履歴の1行を作る（方向 long/short → 買/売）
 function sigRowOf(sig, label){
   const dir = String(sig.direction||"").toLowerCase();
@@ -326,6 +337,9 @@ function render(d){
     // 資金メトリクス（現金・実現損益・勝率・決済件数）を反映
     putMetrics("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.metrics   : null);
     putMetrics("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.metrics : null);
+    // 含み損益カード＝各建玉のunrealized_pnlを合計（metricsに合計が無いため建玉から算出）
+    putUpnl("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null);
+    putUpnl("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null);
     // シグナル発火履歴を反映
     const srows = sigRows(d);
     sigGrid.updateConfig({data:srows}).forceRender();
