@@ -8,8 +8,8 @@
 <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
 <style>
   :root{
-    --bg:#060a12; --panel:#0f1722; --panel2:#0b121c; --line:#33475f; --text:#e6edf3;
-    --label:#8b97a7; --accent:#5b9dff; --shadow:#b98bff; --green:#3fb950; --red:#f85149;
+    --bg:#060a12; --panel:#0f1722; --panel2:#0b121c; --line:#4a5f78; --text:#e6edf3;
+    --label:#9fabbd; --accent:#5b9dff; --shadow:#b98bff; --green:#3fb950; --red:#f85149;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
@@ -45,13 +45,13 @@
   details.fold > summary.head .caret{display:inline-block;margin-right:8px;font-size:12px;color:var(--label);transition:transform .15s;}
   details.fold[open] > summary.head .caret{transform:rotate(90deg);}
   details.fold > summary.head:hover .caret{color:var(--accent);}
-  .gridjs-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border-color:#33475f!important;}
+  .gridjs-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;border-color:#4a5f78!important;}
   .gridjs-table{font-size:14px;width:100%;table-layout:fixed!important;}
-  .gridjs-th,.gridjs-td{border:1px solid #33475f!important;white-space:nowrap;}
+  .gridjs-th,.gridjs-td{border:1px solid #4a5f78!important;white-space:nowrap;}
   .gridjs-td:last-child,.gridjs-th:last-child{white-space:normal;}
-  .gridjs-footer{background:var(--panel2)!important;border-color:#33475f!important;box-shadow:none!important;}
+  .gridjs-footer{background:var(--panel2)!important;border-color:#4a5f78!important;box-shadow:none!important;}
   .gridjs-pagination{color:var(--label)!important}
-  .gridjs-pagination .gridjs-pages button{background:var(--panel)!important;color:var(--text)!important;border:1px solid #33475f!important;}
+  .gridjs-pagination .gridjs-pages button{background:var(--panel)!important;color:var(--text)!important;border:1px solid #4a5f78!important;}
   .gridjs-pagination .gridjs-pages button:disabled{color:var(--label)!important;}
   .gridjs-pagination .gridjs-pages button.gridjs-currentPage{background:#1a2740!important;}
   .bracket{display:grid;grid-template-columns:auto auto;gap:2px 22px;line-height:1.45;white-space:nowrap;font-size:13px;}
@@ -169,8 +169,8 @@ function posRows(d){
   }
   return out;
 }
-const th={background:"#0b121c",color:"#8b97a7",borderColor:"#33475f",fontSize:"13px"};
-const td={background:"#0f1722",color:"#e6edf3",borderColor:"#33475f",verticalAlign:"top"};
+const th={background:"#0b121c",color:"#9fabbd",borderColor:"#4a5f78",fontSize:"13px"};
+const td={background:"#0f1722",color:"#e6edf3",borderColor:"#4a5f78",verticalAlign:"top"};
 const posGrid = new gridjs.Grid({
   columns:[
     {name:"系統",width:"117px"},
