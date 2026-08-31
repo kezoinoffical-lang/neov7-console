@@ -70,6 +70,8 @@
     header .brand{padding:14px 16px;flex:1 1 100%;}
     header .status{width:100%;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);}
     header .cell:nth-child(4){border-left:none;}
+    /* スマホ幅では値が切れないよう折り返し許可（ellipsisで隠さない） */
+    header .cell .v{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.25;}
   }
   @media(max-width:520px){
     body{font-size:13px;}
@@ -122,6 +124,8 @@ const share = (a,b)=>{ if(a==null||b==null||(a+b)<=0) return ""; return Math.rou
 const uju = `<span class="muted">価格未受信</span>`;
 function tag(label){const c=label.includes("Shadow")?"shadow":"gsbt";return `<span class="tag ${c}">${label}</span>`;}
 function fmtET(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
+// ヘッダー用の短縮ET（年を省いて桁を詰める → スマホで切れにくい）
+function fmtETshort(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
 function bracketLive(p){
   const s1=share(p.sl1_qty,p.sl2_qty), s2=share(p.sl2_qty,p.sl1_qty);
   const P=[
@@ -297,7 +301,7 @@ function setConn(state){
 }
 function render(d){
   try{
-    document.getElementById("et").textContent = fmtET(d.generated_at_utc);
+    document.getElementById("et").textContent = fmtETshort(d.generated_at_utc);
     const fs = d.feed && d.feed.state ? d.feed.state : "—";
     document.getElementById("market").textContent = fs==="CLOSED" ? "クローズ" : fs;
     const gc = d.strategy&&d.strategy.gsbt ? (d.strategy.gsbt.position_count||0) : 0;
