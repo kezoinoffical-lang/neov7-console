@@ -31,7 +31,7 @@
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
   .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 12px;}
   .kpi .l{font-size:12px;color:var(--label);}
-  .kpi .v{font-size:22px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap;}
   .kpi .v.muted{color:var(--label);font-size:15px;}
   .kpi .l .best{background:#1a2740;color:#7fb0ff;font-size:10px;padding:1px 6px;border-radius:4px;margin-right:6px;}
   .section{margin:14px 16px 8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
@@ -70,14 +70,21 @@
     header .brand{padding:14px 16px;flex:1 1 100%;}
     header .status{width:100%;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);}
     header .cell:nth-child(4){border-left:none;}
-    /* スマホ幅では値が切れないよう折り返し許可（ellipsisで隠さない） */
-    header .cell .v{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.25;}
+    /* スマホ幅では値が切れないよう折り返し許可（英数字は折る／日本語は語で折る＝1文字割れ防止） */
+    header .cell .v{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal;line-height:1.3;}
+    header .cell .l{white-space:normal;overflow:visible;text-overflow:clip;}
   }
   @media(max-width:520px){
     body{font-size:13px;}
-    .kpis{gap:8px;} .kpi{padding:10px;} .kpi .v{font-size:19px;}
+    /* KPIは3列だと1セルが狭すぎて日本語が縦割れ→2列均等に。高さも揃える */
+    .kpis{grid-template-columns:1fr 1fr;gap:8px;} .kpi{padding:10px;display:flex;flex-direction:column;justify-content:center;} .kpi .v{font-size:19px;}
     .gridjs-table{font-size:12px;}
-    header .cell{padding:10px 14px;}
+    /* ヘッダーも3列だと窮屈→2列均等に。余る「接続」は横いっぱいに広げて均等な帯に */
+    header .status{grid-template-columns:1fr 1fr;}
+    header .cell{padding:10px 14px;border-left:1px solid var(--line);}
+    header .cell:nth-child(odd){border-left:none;}
+    header .cell:last-child{grid-column:1 / -1;border-left:none;border-top:1px solid var(--line);}
+    header .cell .v{overflow-wrap:break-word;word-break:normal;}
     header .brand .name{font-size:21px;}
     .section .head h2,.card h2{font-size:15px;}
   }
