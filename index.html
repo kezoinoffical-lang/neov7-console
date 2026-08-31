@@ -157,7 +157,7 @@ function rowOf(p,label){
     ptime = H(uju);
   }
   const upnl = (p.unrealized_pnl!=null) ? money(p.unrealized_pnl) : H(uju);
-  const uprate = (p.unrealized_pnl_rate!=null) ? (Number(p.unrealized_pnl_rate)*100).toFixed(2)+"%" : H(uju);
+  const uprate = (p.unrealized_pnl_rate!=null) ? Number(p.unrealized_pnl_rate).toFixed(2)+"%" : H(uju);
   return [
     H(tag(label)),
     H(`<b>${p.symbol}</b> <span class="muted">${p.tf}</span>`),
