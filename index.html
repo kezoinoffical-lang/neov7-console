@@ -298,7 +298,7 @@ function posPaint(){
   if(pv) pv.disabled = posPage<=0; if(nx) nx.disabled = posPage>=pages-1;
 }
 // データ更新：顔ぶれが同じなら値のセルだけ差し替え(再描画なし)、変わったら作り直す
-  function posUpdate(rows, structKey){
+    function posUpdate(rows, structKey){
   const sameStruct = (structKey===posStructKey && rows.length===posRowsCache.length);
   posRowsCache = rows;
   if(!sameStruct){ posStructKey=structKey; posPaint(); return; }
@@ -470,6 +470,22 @@ function keepPage(grid, containerId, updateFn){
     }, 30);
   }
 }
+function tradeKey(d){
+  const g=(d.strategy&&d.strategy.gsbt&&d.strategy.gsbt.closed_trades)||[];
+  const s=(d.strategy&&d.strategy.shadow&&d.strategy.shadow.closed_trades)||[];
+  const a=[];
+  g.forEach(t=>a.push("G|"+(t.trade_id||"")+"|"+(t.exit_ts||"")+"|"+(t.net_pnl||"")+"|"+(t.exit_price||"")+"|"+(t.shares||"")));
+  s.forEach(t=>a.push("S|"+(t.trade_id||"")+"|"+(t.exit_ts||"")+"|"+(t.net_pnl||"")+"|"+(t.exit_price||"")+"|"+(t.shares||"")));
+  a.sort(); return a.join(",");
+}
+function sigKey(d){
+  const g=(d.strategy&&d.strategy.gsbt&&d.strategy.gsbt.signals)||[];
+  const s=(d.strategy&&d.strategy.shadow&&d.strategy.shadow.signals)||[];
+  const a=[];
+  g.forEach(x=>a.push("G|"+(x.symbol||"")+"|"+(x.tf||"")+"|"+(x.direction||"")+"|"+(x.recipe_id||"")+"|"+(x.signal_bar||"")));
+  s.forEach(x=>a.push("S|"+(x.symbol||"")+"|"+(x.tf||"")+"|"+(x.direction||"")+"|"+(x.recipe_id||"")+"|"+(x.signal_bar||"")));
+  a.sort(); return a.join(",");
+}
 let _sigKey="", _tradeKey="";
 function render(d){
   try{
@@ -498,14 +514,14 @@ function render(d){
     putUpnl("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null);
     // シグナル発火履歴を反映
     const srows = sigRows(d);
-    const _sk=JSON.stringify(srows);
+    const _sk=sigKey(d);
     if(_sk!==_sigKey){ _sigKey=_sk; keepPage(sigGrid,"signals",function(){ sigGrid.updateConfig({data:srows}).forceRender(); }); }
     // SIG_BADGE_EMIT: バッジは表示行数ではなく総発火数(signals_emitted)を出す（直近◯件表示を併記）
     const _emit=(d.strategy&&d.strategy.gsbt&&d.strategy.gsbt.metrics&&d.strategy.gsbt.metrics.signals_emitted!=null)?d.strategy.gsbt.metrics.signals_emitted:null;
     document.getElementById("sig-badge").textContent = (_emit!=null?"発火 "+_emit+"件（直近"+srows.length+"件表示）":"受信 "+srows.length+"件")+" ・ 更新 "+fmtET(d.generated_at_utc);
     // 取引履歴を反映
     const trows = tradeRows(d);
-    const _tk=JSON.stringify(trows);
+    const _tk=tradeKey(d);
     if(_tk!==_tradeKey){ _tradeKey=_tk; keepPage(tradeGrid,"trades",function(){ tradeGrid.updateConfig({data:trows}).forceRender(); }); }
     document.getElementById("trade-badge").textContent = "決済 "+trows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
     document.getElementById("detail").textContent =
