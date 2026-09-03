@@ -474,7 +474,9 @@ function render(d){
   try{
     document.getElementById("et").textContent = fmtETshort(d.generated_at_utc);
     const fs = d.feed && d.feed.state ? d.feed.state : "—";
-    document.getElementById("market").textContent = fs==="CLOSED" ? "クローズ" : fs;
+    // SESSION_LABEL: market_state(PRE/CORE/AFTER/OFFLINE)をセッション名で表示・無ければfeed.stateにフォールバック
+    const _MS={PRE:"プレマーケット",CORE:"コアマーケット",AFTER:"アフターマーケット",OFFLINE:"閉場",CLOSED:"閉場"};
+    document.getElementById("market").textContent = _MS[d.market_state] || (fs==="CLOSED" ? "クローズ" : fs);
     const gc = d.strategy&&d.strategy.gsbt ? (d.strategy.gsbt.position_count||0) : 0;
     const sc = d.strategy&&d.strategy.shadow ? (d.strategy.shadow.position_count||0) : 0;
     document.getElementById("sources").textContent = "新GSBT "+gc+" / Shadow "+sc;
