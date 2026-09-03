@@ -110,7 +110,7 @@
     header .brand .name{font-size:21px;}
     .section .head h2,.card h2{font-size:15px;}
   }
-</style>
+.pc-prev{display:block;font-size:10px;color:var(--label);font-style:italic;line-height:1.25;margin-top:2px;white-space:nowrap;}</style>
 </head>
 <body>
 <header>
@@ -175,8 +175,8 @@ function rowOf(p,label){
     ptime = p.price_at_utc ? fmtET(p.price_at_utc) : H(uju);
   } else if (p.prev_close!=null) {
     // 価格が来ていない時は最後に受信した価格を「前回終値」として表示（sidecarが保持・全端末共通）
-    cur = H(money(p.prev_close) + ' <span class="u">前回終値</span>');
-    ptime = p.prev_close_at ? H(fmtET(p.prev_close_at) + ' <span class="u">前回</span>') : H(uju);
+    cur = H(money(p.prev_close) + ' <span class="pc-prev">前回終値</span>');
+    ptime = p.prev_close_at ? H(fmtET(p.prev_close_at) + ' <span class="pc-prev">前回</span>') : H(uju);
   } else {
     cur = H(uju);
     ptime = H(uju);
@@ -212,8 +212,8 @@ function rowHtmlOf(p,label){
     cur = money(p.current_price);
     ptime = p.price_at_utc ? fmtETnoSuffix(p.price_at_utc) : uju;
   } else if (p.prev_close!=null) {
-    cur = money(p.prev_close) + ' <span class="u">前回終値</span>';
-    ptime = p.prev_close_at ? (fmtETnoSuffix(p.prev_close_at) + ' <span class="u">前回</span>') : uju;
+    cur = money(p.prev_close) + ' <span class="pc-prev">前回終値</span>';
+    ptime = p.prev_close_at ? (fmtETnoSuffix(p.prev_close_at) + ' <span class="pc-prev">前回</span>') : uju;
   } else { cur = uju; ptime = uju; }
   let upnl = uju;
   if (p.unrealized_pnl!=null){ const v=Number(p.unrealized_pnl); const c=v>0?"#3fb950":(v<0?"#f85149":"inherit"); upnl='<span style="color:'+c+'">'+money(v)+'</span>'; }
