@@ -193,10 +193,19 @@ function rowOf(p,label){
     H(bracketLive(p)),
   ];
 }
+// 建玉の並び順キー：trade_id末尾の連番（＝約定順・大きいほど新しい）。
+// 実測(2026/9/4)で「trade_id連番順＝実約定seq順＝約定時刻順」が完全一致。
+// 両系統(新GSBT/Shadow)は同一連番なので、各配列を独立にソートしてもペアは揃う。
+function entryOrderKey(p){
+  const m = /-(\d+)\s*$/.exec((p && p.trade_id) || "");
+  return m ? parseInt(m[1],10) : -1;
+}
+// 直近購入（連番が大きい）を先頭にする比較関数
+function byNewestEntry(a,b){ return entryOrderKey(b) - entryOrderKey(a); }
 function posRows(d){
   // 銘柄ごとに 新GSBT → Shadow FW の交互並び（同じ銘柄を上下ペアにして見比べやすくする）
-  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
-  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const g=((d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || []).slice().sort(byNewestEntry);
+  const s=((d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || []).slice().sort(byNewestEntry);
   const out=[];
   const n=Math.max(g.length, s.length);
   for(let i=0;i<n;i++){
@@ -231,8 +240,8 @@ function rowHtmlOf(p,label){
 }
 // 全行(交互並び)をHTML文字列配列で
 function posRowsHtml(d){
-  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
-  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const g=((d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || []).slice().sort(byNewestEntry);
+  const s=((d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || []).slice().sort(byNewestEntry);
   const out=[]; const n=Math.max(g.length, s.length);
   for(let i=0;i<n;i++){
     if(i<g.length) out.push(rowHtmlOf(g[i],"新GSBT"));
@@ -242,8 +251,8 @@ function posRowsHtml(d){
 }
 // 顔ぶれキー（系統+銘柄+時間足+trade_idの並び。これが変わった時だけ行を作り直す）
 function posStructOf(d){
-  const g=(d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || [];
-  const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || [];
+  const g=((d.strategy && d.strategy.gsbt   && d.strategy.gsbt.live_positions)   || []).slice().sort(byNewestEntry);
+  const s=((d.strategy && d.strategy.shadow && d.strategy.shadow.live_positions) || []).slice().sort(byNewestEntry);
   const parts=[]; const n=Math.max(g.length, s.length);
   for(let i=0;i<n;i++){
     if(i<g.length){ const p=g[i]; parts.push("G|"+p.symbol+"|"+p.tf+"|"+(p.trade_id||"")); }
@@ -289,7 +298,7 @@ function posPaint(){
   else{
     let html="";
     for(let i=start;i<end;i++){ const r=posRowsCache[i];
-      html+="<tr>"+r.map((cell,ci)=>`<td class="pc${ci}">${cell}</td>`).join("")+"</tr>"; }
+        html+="<tr>"+r.map((cell,ci)=>`<td class="pc${ci}">${cell}</td>`).join("")+"</tr>"; }
     tb.innerHTML=html;
   }
   const ci=document.getElementById("pos-count"); if(ci) ci.textContent = total? (start+1)+"–"+end+" / "+total+"件" : "0件";
