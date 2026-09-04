@@ -298,7 +298,7 @@ function posPaint(){
   if(pv) pv.disabled = posPage<=0; if(nx) nx.disabled = posPage>=pages-1;
 }
 // データ更新：顔ぶれが同じなら値のセルだけ差し替え(再描画なし)、変わったら作り直す
-    function posUpdate(rows, structKey){
+      function posUpdate(rows, structKey){
   const sameStruct = (structKey===posStructKey && rows.length===posRowsCache.length);
   posRowsCache = rows;
   if(!sameStruct){ posStructKey=structKey; posPaint(); return; }
@@ -441,7 +441,8 @@ function sigRows(d){
   const s=(d.strategy && d.strategy.shadow && d.strategy.shadow.signals) || [];
   const out=[];
   const n=Math.max(g.length, s.length);
-  for(let i=0;i<n;i++){
+  // 最新を先頭に表示(signals配列は古い順なので後ろから走査)。同一発火の新GSBT→Shadow交互は維持
+  for(let i=n-1;i>=0;i--){
     if(i<g.length) out.push(sigRowOf(g[i],"新GSBT"));
     if(i<s.length) out.push(sigRowOf(s[i],"Shadow FW"));
   }
@@ -491,8 +492,8 @@ function render(d){
   try{
     document.getElementById("et").textContent = fmtETshort(d.generated_at_utc);
     const fs = d.feed && d.feed.state ? d.feed.state : "—";
-    // SESSION_LABEL: market_state(PRE/CORE/AFTER/OFFLINE)をセッション名で表示・無ければfeed.stateにフォールバック
-    const _MS={PRE:"プレマーケット",CORE:"コアマーケット",AFTER:"アフターマーケット",OFFLINE:"閉場",CLOSED:"閉場"};
+    // SESSION_LABEL: market_state(PRE/CORE/AFTER/OVERNIGHT/OFFLINE)をセッション名で表示・無ければfeed.stateにフォールバック
+    const _MS={PRE:"プレマーケット",CORE:"コアマーケット",AFTER:"アフターマーケット",OVERNIGHT:"閉場",OFFLINE:"閉場",CLOSED:"閉場"};
     document.getElementById("market").textContent = _MS[d.market_state] || (fs==="CLOSED" ? "クローズ" : fs);
     const gc = d.strategy&&d.strategy.gsbt ? (d.strategy.gsbt.position_count||0) : 0;
     const sc = d.strategy&&d.strategy.shadow ? (d.strategy.shadow.position_count||0) : 0;
