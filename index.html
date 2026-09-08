@@ -158,6 +158,9 @@ function fmtET(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleS
 function fmtETnoSuffix(iso){ if(!iso) return "—"; try{ return new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }catch(e){ return String(iso); } }
 // ヘッダー用の短縮ET（年を省いて桁を詰める → スマホで切れにくい）
 function fmtETshort(iso){ if(!iso) return "—"; try{ const s=new Date(iso).toLocaleString("ja-JP",{timeZone:"America/New_York",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); return s+" ET"; }catch(e){ return String(iso); } }
+// LIVE_CLOCK_PATCH: ヘッダ「米国東部時間」を現在ET時刻のライブ表示にする（毎秒更新・データ配信とは独立）
+function tickETClock(){ try{ var s=new Date().toLocaleString("ja-JP",{timeZone:"America/New_York",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}); var el=document.getElementById("et"); if(el) el.textContent=s+" ET"; }catch(e){} }
+setInterval(tickETClock,1000); tickETClock();
 function bracketLive(p){
   const s1=share(p.sl1_qty,p.sl2_qty), s2=share(p.sl2_qty,p.sl1_qty);
   const P=[
@@ -298,7 +301,7 @@ function posPaint(){
   else{
     let html="";
     for(let i=start;i<end;i++){ const r=posRowsCache[i];
-        html+="<tr>"+r.map((cell,ci)=>`<td class="pc${ci}">${cell}</td>`).join("")+"</tr>"; }
+      html+="<tr>"+r.map((cell,ci)=>`<td class="pc${ci}">${cell}</td>`).join("")+"</tr>"; }
     tb.innerHTML=html;
   }
   const ci=document.getElementById("pos-count"); if(ci) ci.textContent = total? (start+1)+"–"+end+" / "+total+"件" : "0件";
@@ -499,7 +502,7 @@ function sigKey(d){
 let _sigKey="", _tradeKey="";
 function render(d){
   try{
-    document.getElementById("et").textContent = fmtETshort(d.generated_at_utc);
+    // LIVE_CLOCK_PATCH: ヘッダ「米国東部時間」は現在ET時刻のライブ表示へ変更（tickETClockが毎秒更新）。データ生成時刻は各バッジ「更新」に表示。
     const fs = d.feed && d.feed.state ? d.feed.state : "—";
     // SESSION_LABEL: market_state(PRE/CORE/AFTER/OVERNIGHT/OFFLINE)をセッション名で表示・無ければfeed.stateにフォールバック
     const _MS={PRE:"プレマーケット",CORE:"コアマーケット",AFTER:"アフターマーケット",OVERNIGHT:"閉場",OFFLINE:"閉場",CLOSED:"閉場"};
@@ -573,7 +576,6 @@ document.getElementById("trade-section").addEventListener("toggle", function(){
       const raw=decodeURIComponent(btn.getAttribute("data-reason-raw")||"");
       jaEl.textContent = ja || "—";
       rawEl.textContent = (raw && raw!==ja) ? raw : "";   // 日本語化された時だけ元コードも出す
-      // ボタンの下（画面端は上）に配置
       pop.style.display="block";
       const r=btn.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
       let left=r.left, top=r.bottom+6;
