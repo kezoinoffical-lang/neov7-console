@@ -28,6 +28,12 @@
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 16px 4px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;}
   .card h2{margin:0 0 14px;font-size:17px;}
+  /* カードのタイトル行に「建玉時価・総資産」を右寄せで載せる（枠は増やさず空きスペースを使う） */
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;margin:0 0 14px;}
+  .card-head h2{margin:0;}
+  .card-sum{font-size:13px;color:var(--label);font-variant-numeric:tabular-nums;}
+  .card-sum .cs-v{color:var(--text);font-weight:700;margin-left:2px;}
+  .card-sum .cs-sep{margin:0 8px;color:var(--line);}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
   .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 12px;}
   .kpi .l{font-size:12px;color:var(--label);}
@@ -124,7 +130,7 @@
   </div>
 </header>
 <div class="cards">
-  <div class="card"><h2>新GSBT</h2><div class="kpis">
+  <div class="card"><div class="card-head"><h2>新GSBT</h2><div class="card-sum">建玉時価 <span class="cs-v" id="g-mktval">—</span><span class="cs-sep">・</span>総資産 <span class="cs-v" id="g-equity">—</span></div></div><div class="kpis">
     <div class="kpi"><div class="l">現金</div><div class="v" id="g-cash">受信待ち</div></div>
     <div class="kpi"><div class="l">実現損益</div><div class="v" id="g-realized">受信待ち</div></div>
     <div class="kpi"><div class="l">含み損益</div><div class="v muted" id="g-upnl">未受信</div></div>
@@ -132,7 +138,7 @@
     <div class="kpi"><div class="l">決済件数</div><div class="v" id="g-closed">受信待ち</div></div>
     <div class="kpi"><div class="l">保有件数</div><div class="v" id="g-hold">—</div></div>
   </div></div>
-  <div class="card"><h2>Shadow FW</h2><div class="kpis">
+  <div class="card"><div class="card-head"><h2>Shadow FW</h2><div class="card-sum">建玉時価 <span class="cs-v" id="s-mktval">—</span><span class="cs-sep">・</span>総資産 <span class="cs-v" id="s-equity">—</span></div></div><div class="kpis">
     <div class="kpi"><div class="l">現金</div><div class="v" id="s-cash">受信待ち</div></div>
     <div class="kpi"><div class="l">実現損益</div><div class="v" id="s-realized">受信待ち</div></div>
     <div class="kpi"><div class="l">含み損益</div><div class="v muted" id="s-upnl">未受信</div></div>
@@ -435,6 +441,27 @@ function putUpnl(prefix, positions){
   el.textContent="$"+sum.toFixed(2);
   el.style.color = sum>0 ? "#3fb950" : (sum<0 ? "#f85149" : "");
 }
+// 建玉時価＝保有評価額合計（各建玉の 現在値×残数量 を系統ごとに合計。行の「現在値／残数量」と同じ値を使う）
+// 総資産＝現金＋建玉時価（＝初期＋実現＋含み と一致するはず）。両方をカードのタイトル行に表示。
+function putValue(prefix, positions, cash){
+  var mvEl=document.getElementById(prefix+"-mktval");
+  var eqEl=document.getElementById(prefix+"-equity");
+  var arr=Array.isArray(positions)?positions:[];
+  var mv=0, any=false;
+  for(var i=0;i<arr.length;i++){ var p=arr[i]||{};
+    var px=null;
+    if(p.mark_available && p.current_price!=null) px=Number(p.current_price);   // ライブ価格優先
+    else if(p.prev_close!=null) px=Number(p.prev_close);                         // 無ければ前回終値
+    var sh=Number(p.remaining);
+    if(px!=null && isFinite(px) && isFinite(sh)){ mv+=px*sh; any=true; }
+  }
+  if(mvEl) mvEl.textContent = any ? ("$"+mv.toFixed(2)) : "—";
+  if(eqEl){
+    var c=(cash==null||cash==="")?null:Number(cash);
+    if(c!=null && isFinite(c)) eqEl.textContent = "$"+(c+(any?mv:0)).toFixed(2);   // 現金＋建玉時価
+    else eqEl.textContent = "—";
+  }
+}
 // 発火履歴の1行を作る（方向 long/short → 買/売）
 function sigRowOf(sig, label){
   const dir = String(sig.direction||"").toLowerCase();
@@ -525,6 +552,9 @@ function render(d){
     // 含み損益カード＝各建玉のunrealized_pnlを合計（metricsに合計が無いため建玉から算出）
     putUpnl("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null);
     putUpnl("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null);
+    // 建玉時価＋総資産（現金＋建玉時価）をタイトル行に反映
+    putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, d.strategy && d.strategy.gsbt   && d.strategy.gsbt.metrics   ? d.strategy.gsbt.metrics.cash   : null);
+    putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, d.strategy && d.strategy.shadow && d.strategy.shadow.metrics ? d.strategy.shadow.metrics.cash : null);
     // シグナル発火履歴を反映
     const srows = sigRows(d);
     const _sk=sigKey(d);
@@ -576,6 +606,7 @@ document.getElementById("trade-section").addEventListener("toggle", function(){
       const raw=decodeURIComponent(btn.getAttribute("data-reason-raw")||"");
       jaEl.textContent = ja || "—";
       rawEl.textContent = (raw && raw!==ja) ? raw : "";   // 日本語化された時だけ元コードも出す
+      // ボタンの下（画面端は上）に配置
       pop.style.display="block";
       const r=btn.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
       let left=r.left, top=r.bottom+6;
