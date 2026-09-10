@@ -147,6 +147,21 @@
     <div class="kpi"><div class="l">保有件数</div><div class="v" id="s-hold">—</div></div>
   </div></div>
 </div>
+<!-- ADD: ベンチマーク（対QQQ）区画。既存カードの直後に追加。データは render(d) 内の d.benchmark から。 -->
+<div class="section" id="bm-section"><div class="head"><h2>ベンチマーク（対 QQQ）</h2><span class="badge" id="bm-badge">受信待ち</span></div><div class="body">
+  <div class="kpis">
+    <div class="kpi"><div class="l">超過リターン（FW − QQQ）</div><div class="v muted" id="bm-excess">—</div></div>
+    <div class="kpi"><div class="l">ベータ（対QQQ連動度）</div><div class="v muted" id="bm-beta">—</div></div>
+    <div class="kpi"><div class="l">期間リターン（FW / QQQ）</div><div class="v muted" id="bm-rets" style="font-size:15px">—</div></div>
+  </div>
+  <div style="margin-top:12px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--label);flex-wrap:wrap">
+    <span><span style="display:inline-block;width:14px;height:3px;background:var(--accent);vertical-align:middle"></span> FW（資産推移）</span>
+    <span><span style="display:inline-block;width:14px;height:3px;background:var(--label);vertical-align:middle"></span> QQQ</span>
+    <span style="margin-left:auto">初日=100に指数化</span>
+  </div>
+  <div id="bm-chart" style="margin-top:6px;overflow-x:auto"></div>
+</div></div>
+<!-- /ADD -->
 <details class="section fold" id="sig-section"><summary class="head"><h2><span class="caret">▶</span>シグナル発火履歴</h2><span class="badge" id="sig-badge">受信待ち</span></summary><div class="body"><div id="signals"></div></div></details>
 <div class="section"><div class="head"><h2>保有銘柄</h2><span class="badge" id="pos-badge">受信待ち</span></div><div class="body"><div id="positions"></div></div></div>
 <details class="section fold" id="trade-section"><summary class="head"><h2><span class="caret">▶</span>取引履歴</h2><span class="badge" id="trade-badge">受信待ち</span></summary><div class="body"><div id="trades"></div></div></details>
@@ -526,6 +541,37 @@ function sigKey(d){
   s.forEach(x=>a.push("S|"+(x.symbol||"")+"|"+(x.tf||"")+"|"+(x.direction||"")+"|"+(x.recipe_id||"")+"|"+(x.signal_bar||"")));
   a.sort(); return a.join(",");
 }
+// ADD: ベンチマーク描画（既存を変更せず追加）。d.benchmark を受けてタイル＋SVGチャートを更新
+function bmColor(v){ return (v>0) ? "#3fb950" : (v<0 ? "#f85149" : "var(--text)"); }
+function bmPct(v){ return (v==null||isNaN(v)) ? "—" : (v>0?"+":"")+Number(v).toFixed(2)+"%"; }
+function drawBenchmarkChart(series){
+  const el=document.getElementById("bm-chart"); if(!el) return;
+  if(!series || series.length<1){ el.innerHTML='<div class="muted" style="padding:8px;font-size:12px">データ準備中…</div>'; return; }
+  const W=1100,H2=220,padL=44,padR=12,padT=12,padB=26,n=series.length;
+  const vals=[]; series.forEach(s=>{ vals.push(s.fw_idx,s.qqq_idx); });
+  let mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals); if(mn===mx){mn-=1;mx+=1;}
+  const X=i=> padL + (n<=1?0:(W-padL-padR)*i/(n-1));
+  const Y=v=> padT + (H2-padT-padB)*(1-(v-mn)/(mx-mn));
+  const path=k=> series.map((s,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(s[k]).toFixed(1)).join(" ");
+  let svg="<svg viewBox='0 0 "+W+" "+H2+"' width='100%' preserveAspectRatio='none' style='min-width:520px;display:block'>";
+  if(mn<=100&&100<=mx){ const y=Y(100).toFixed(1); svg+="<line x1='"+padL+"' y1='"+y+"' x2='"+(W-padR)+"' y2='"+y+"' stroke='#2a3350' stroke-dasharray='4 4'/>"; }
+  svg+="<text x='4' y='"+(padT+8)+"' fill='#9fabbd' font-size='10'>"+mx.toFixed(1)+"</text>";
+  svg+="<text x='4' y='"+(H2-padB)+"' fill='#9fabbd' font-size='10'>"+mn.toFixed(1)+"</text>";
+  svg+="<path d='"+path("qqq_idx")+"' fill='none' stroke='#9fabbd' stroke-width='2'/>";
+  svg+="<path d='"+path("fw_idx")+"' fill='none' stroke='#5b9dff' stroke-width='2.5'/>";
+  series.forEach((s,i)=>{ svg+="<text x='"+X(i).toFixed(1)+"' y='"+(H2-8)+"' fill='#9fabbd' font-size='10' text-anchor='middle'>"+String(s.d).slice(5)+"</text>"; });
+  svg+="</svg>"; el.innerHTML=svg;
+}
+function renderBenchmark(b){
+  const badge=document.getElementById("bm-badge");
+  if(!b){ if(badge) badge.textContent="受信待ち"; return; }
+  const ex=document.getElementById("bm-excess"); if(ex){ ex.textContent=bmPct(b.excess_return_pct); ex.style.color=bmColor(b.excess_return_pct); ex.classList.remove("muted"); }
+  const be=document.getElementById("bm-beta"); if(be){ be.textContent=(b.beta==null?"—":Number(b.beta).toFixed(3)); be.classList.remove("muted"); }
+  const rt=document.getElementById("bm-rets"); if(rt){ rt.textContent="FW "+bmPct(b.fw_return_pct)+" / QQQ "+bmPct(b.qqq_return_pct); rt.classList.remove("muted"); }
+  if(badge) badge.textContent=(b.period_start||"")+" 〜 "+(b.period_end||"")+"（"+(b.n_days||0)+"日）";
+  drawBenchmarkChart(b.series||[]);
+}
+// /ADD
 let _sigKey="", _tradeKey="";
 function render(d){
   try{
@@ -555,6 +601,9 @@ function render(d){
     // 建玉時価＋総資産（現金＋建玉時価）をタイトル行に反映
     putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, d.strategy && d.strategy.gsbt   && d.strategy.gsbt.metrics   ? d.strategy.gsbt.metrics.cash   : null);
     putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, d.strategy && d.strategy.shadow && d.strategy.shadow.metrics ? d.strategy.shadow.metrics.cash : null);
+    // ADD: ベンチマーク（対QQQ）を反映（既存SSEに相乗り・追加接続なし）
+    renderBenchmark(d.benchmark);
+    // /ADD
     // シグナル発火履歴を反映
     const srows = sigRows(d);
     const _sk=sigKey(d);
