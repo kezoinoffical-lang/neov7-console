@@ -335,12 +335,15 @@ function posPaint(){
   const sameStruct = (structKey===posStructKey && rows.length===posRowsCache.length);
   posRowsCache = rows;
   if(!sameStruct){ posStructKey=structKey; posPaint(); return; }
-  // 同じ顔ぶれ＝現在表示中ページの値セル(現在値5/価格時刻6/含み損益7/含み損益率8)だけ書き換え
+  // 同じ顔ぶれ＝現在表示中ページの値セルだけ書き換え。
+  // 対象＝残数量3／現在値5／価格時刻6／含み損益7／含み損益率8／損切・利確9。
+  // 2026-09-12 修正：残数量3と損切・利確9を追加。部分決済(T1/SL1約定)は trade_id が変わらず顔ぶれキーも同じため、
+  // この経路を通る。従来は5〜8だけ更新していたので、残数量と株数の内訳が古いまま残り、含み損益だけ新しくなって表示が矛盾していた。
   const tb=document.getElementById("pos-tbody"); if(!tb) return;
   const start=posPage*POS_PAGE_LIMIT;
   const trs=tb.querySelectorAll("tr");
   trs.forEach((tr,idx)=>{ const r=posRowsCache[start+idx]; if(!r) return;
-    [5,6,7,8].forEach(ci=>{ const cell=tr.querySelector(".pc"+ci); if(cell && cell.innerHTML!==r[ci]) cell.innerHTML=r[ci]; });
+    [3,5,6,7,8,9].forEach(ci=>{ const cell=tr.querySelector(".pc"+ci); if(cell && cell.innerHTML!==r[ci]) cell.innerHTML=r[ci]; });
   });
 }
 posInit();
