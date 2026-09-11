@@ -459,7 +459,9 @@ function putUpnl(prefix, positions){
   el.textContent="$"+sum.toFixed(2);
   el.style.color = sum>0 ? "#3fb950" : (sum<0 ? "#f85149" : "");
 }
-// 建玉時価＝保有評価額合計（各建玉の 現在値×残数量 を系統ごとに合計。行の「現在値／残数量」と同じ値を使う）
+// 建玉時価＝保有評価額合計。買付＝現在値×残数量。売建＝(2×取得価格−現在値)×残数量（拘束した資金＋含み損益）。
+//   2026-09-12 修正：従来は売建も現在値×残数量で正に加算していたため、売建があると建玉時価が総資産を上回っていた。
+//   この系統の会計は売建でも取得価格×数量の資金を拘束し、含み損益は(取得価格−現在値)×数量。その通りに評価する。
 // 総資産＝上流正本値（metrics.equity）をそのまま表示する。自前計算（現金＋建玉時価）は上流が equity を出さない時だけの予備。
 // 理由(2026-09-11 実データ検算)：自前計算は sidecar の equity と 9.39ドルずれ、売建も正に加算していた。正本値を使う。
 function putValue(prefix, positions, cash, equity){
@@ -472,7 +474,11 @@ function putValue(prefix, positions, cash, equity){
     if(p.mark_available && p.current_price!=null) px=Number(p.current_price);   // ライブ価格優先
     else if(p.prev_close!=null) px=Number(p.prev_close);                         // 無ければ前回終値
     var sh=Number(p.remaining);
-    if(px!=null && isFinite(px) && isFinite(sh)){ mv+=px*sh; any=true; }
+    var en=(p.entry_price==null||p.entry_price==="")?null:Number(p.entry_price);
+    if(px!=null && isFinite(px) && isFinite(sh)){
+      var v=(p.direction==="short" && en!=null && isFinite(en)) ? (2*en-px)*sh : px*sh;   // 売建は拘束資金＋含み損益、買付は時価
+      mv+=v; any=true;
+    }
   }
   if(mvEl) mvEl.textContent = any ? ("$"+mv.toFixed(2)) : "—";
   if(eqEl){
