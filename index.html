@@ -457,8 +457,9 @@ function putUpnl(prefix, positions){
   el.style.color = sum>0 ? "#3fb950" : (sum<0 ? "#f85149" : "");
 }
 // 建玉時価＝保有評価額合計（各建玉の 現在値×残数量 を系統ごとに合計。行の「現在値／残数量」と同じ値を使う）
-// 総資産＝現金＋建玉時価（＝初期＋実現＋含み と一致するはず）。両方をカードのタイトル行に表示。
-function putValue(prefix, positions, cash){
+// 総資産＝上流正本値（metrics.equity）をそのまま表示する。自前計算（現金＋建玉時価）は上流が equity を出さない時だけの予備。
+// 理由(2026-09-11 実データ検算)：自前計算は sidecar の equity と 9.39ドルずれ、売建も正に加算していた。正本値を使う。
+function putValue(prefix, positions, cash, equity){
   var mvEl=document.getElementById(prefix+"-mktval");
   var eqEl=document.getElementById(prefix+"-equity");
   var arr=Array.isArray(positions)?positions:[];
@@ -472,8 +473,10 @@ function putValue(prefix, positions, cash){
   }
   if(mvEl) mvEl.textContent = any ? ("$"+mv.toFixed(2)) : "—";
   if(eqEl){
+    var e=(equity==null||equity==="")?null:Number(equity);
     var c=(cash==null||cash==="")?null:Number(cash);
-    if(c!=null && isFinite(c)) eqEl.textContent = "$"+(c+(any?mv:0)).toFixed(2);   // 現金＋建玉時価
+    if(e!=null && isFinite(e)) eqEl.textContent = "$"+e.toFixed(2);                  // 上流正本値
+    else if(c!=null && isFinite(c)) eqEl.textContent = "$"+(c+(any?mv:0)).toFixed(2); // 予備：現金＋建玉時価
     else eqEl.textContent = "—";
   }
 }
@@ -602,8 +605,10 @@ function render(d){
     putUpnl("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null);
     putUpnl("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null);
     // 建玉時価＋総資産（現金＋建玉時価）をタイトル行に反映
-    putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, d.strategy && d.strategy.gsbt   && d.strategy.gsbt.metrics   ? d.strategy.gsbt.metrics.cash   : null);
-    putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, d.strategy && d.strategy.shadow && d.strategy.shadow.metrics ? d.strategy.shadow.metrics.cash : null);
+    var _gm = (d.strategy && d.strategy.gsbt   && d.strategy.gsbt.metrics)   ? d.strategy.gsbt.metrics   : null;
+    var _sm = (d.strategy && d.strategy.shadow && d.strategy.shadow.metrics) ? d.strategy.shadow.metrics : null;
+    putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, _gm ? _gm.cash : null, _gm ? _gm.equity : null);
+    putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, _sm ? _sm.cash : null, _sm ? _sm.equity : null);
     // ADD: ベンチマーク（対QQQ）を反映（既存SSEに相乗り・追加接続なし）
     renderBenchmark(d.benchmark);
     // /ADD
