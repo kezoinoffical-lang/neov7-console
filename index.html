@@ -462,9 +462,11 @@ function putUpnl(prefix, positions){
 // 建玉時価＝保有評価額合計。買付＝現在値×残数量。売建＝(2×取得価格−現在値)×残数量（拘束した資金＋含み損益）。
 //   2026-09-12 修正：従来は売建も現在値×残数量で正に加算していたため、売建があると建玉時価が総資産を上回っていた。
 //   この系統の会計は売建でも取得価格×数量の資金を拘束し、含み損益は(取得価格−現在値)×数量。その通りに評価する。
-// 総資産＝上流正本値（metrics.equity）をそのまま表示する。自前計算（現金＋建玉時価）は上流が equity を出さない時だけの予備。
-// 理由(2026-09-11 実データ検算)：自前計算は sidecar の equity と 9.39ドルずれ、売建も正に加算していた。正本値を使う。
-function putValue(prefix, positions, cash, equity){
+// 総資産＝現金＋建玉時価（T基準）。カードの現在値・含み損益・建玉時価と同じ価格の元で揃える。
+//   2026-09-12 再修正：一度 上流 metrics.equity を出すよう変えたが、equity は売買側の AM(1分足) 基準で、
+//   閉場中は AM が止まり T(約定) だけ動くため、同じカードの建玉時価と食い違った（実測 +23.51）。
+//   上流 equity（取引側の資産・AM基準）は詳細情報に出す。建玉があるのに1件も評価できない時は総資産も出さない。
+function putValue(prefix, positions, cash){
   var mvEl=document.getElementById(prefix+"-mktval");
   var eqEl=document.getElementById(prefix+"-equity");
   var arr=Array.isArray(positions)?positions:[];
@@ -482,10 +484,8 @@ function putValue(prefix, positions, cash, equity){
   }
   if(mvEl) mvEl.textContent = any ? ("$"+mv.toFixed(2)) : "—";
   if(eqEl){
-    var e=(equity==null||equity==="")?null:Number(equity);
     var c=(cash==null||cash==="")?null:Number(cash);
-    if(e!=null && isFinite(e)) eqEl.textContent = "$"+e.toFixed(2);                  // 上流正本値
-    else if(c!=null && isFinite(c)) eqEl.textContent = "$"+(c+(any?mv:0)).toFixed(2); // 予備：現金＋建玉時価
+    if(c!=null && isFinite(c) && (any || arr.length===0)) eqEl.textContent = "$"+(c+mv).toFixed(2);   // 現金＋建玉時価（T基準）
     else eqEl.textContent = "—";
   }
 }
@@ -616,8 +616,8 @@ function render(d){
     // 建玉時価＋総資産（現金＋建玉時価）をタイトル行に反映
     var _gm = (d.strategy && d.strategy.gsbt   && d.strategy.gsbt.metrics)   ? d.strategy.gsbt.metrics   : null;
     var _sm = (d.strategy && d.strategy.shadow && d.strategy.shadow.metrics) ? d.strategy.shadow.metrics : null;
-    putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, _gm ? _gm.cash : null, _gm ? _gm.equity : null);
-    putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, _sm ? _sm.cash : null, _sm ? _sm.equity : null);
+    putValue("g", d.strategy && d.strategy.gsbt   ? d.strategy.gsbt.live_positions   : null, _gm ? _gm.cash : null);
+    putValue("s", d.strategy && d.strategy.shadow ? d.strategy.shadow.live_positions : null, _sm ? _sm.cash : null);
     // ADD: ベンチマーク（対QQQ）を反映（既存SSEに相乗り・追加接続なし）
     renderBenchmark(d.benchmark);
     // /ADD
@@ -633,8 +633,11 @@ function render(d){
     const _tk=tradeKey(d);
     if(_tk!==_tradeKey){ _tradeKey=_tk; keepPage(tradeGrid,"trades",function(){ tradeGrid.updateConfig({data:trows}).forceRender(); }); }
     document.getElementById("trade-badge").textContent = "決済 "+trows.length+"件 ・ 更新 "+fmtET(d.generated_at_utc);
+    // 取引側の資産＝上流 metrics.equity（AM基準）。カードの総資産（T基準）と閉場中は開くので、ここで突き合わせる
+    var _eq=function(m){ return (m && m.equity!=null && m.equity!=="") ? "$"+Number(m.equity).toFixed(2) : "—"; };
     document.getElementById("detail").textContent =
-      "revision="+(d.revision??"—")+" ・ status="+(d.status||"—")+" ・ 価格元="+(d.mark_source||"—")+" ・ 生成 "+fmtET(d.generated_at_utc);
+      "revision="+(d.revision??"—")+" ・ status="+(d.status||"—")+" ・ 価格元="+(d.mark_source||"—")+" ・ 生成 "+fmtET(d.generated_at_utc)
+      +" ・ 取引側資産(AM基準) 新GSBT "+_eq(_gm)+" / Shadow "+_eq(_sm);
     setConn("ok");
   }catch(e){
     document.getElementById("detail").textContent = "受信データ解釈エラー: "+e.message;
